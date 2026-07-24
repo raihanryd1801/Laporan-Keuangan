@@ -326,7 +326,23 @@
             transition:.3s;">
                     📜 Log Aktivitas
                 </a>
+            <li style="list-style:none; margin-top:15px;">
+                <a href="{{ url('/laporan/firewall') }}" style="
+            width:100%;
+            display:block;
+            background:#27A6AE;
+            color:#fff;
+            text-decoration:none;
+            padding:12px 15px;
+            border-radius:6px;
+            font-size:14px;
+            font-weight:600;
+            text-align:center;
+            transition:.3s;">
+                    🛡️ Firewall & Sesi
+                </a>
             </li>
+
 
             <form action="{{ route('logout') }}" method="POST" style="margin-top:10px;">
                 @csrf

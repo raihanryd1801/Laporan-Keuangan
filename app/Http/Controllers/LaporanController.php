@@ -9,9 +9,11 @@ use App\Models\Kategori;
 use App\Models\MetodePembayaran;
 use App\Models\User;
 use App\Models\Area;
+use App\Models\FirewallIp;
 use App\Exports\KeuanganExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class LaporanController extends Controller
 {
@@ -43,6 +45,8 @@ class LaporanController extends Controller
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
             })
             ->with(['kategori', 'metodePembayaran', 'area', 'user'])
+            ->orderBy('tanggal', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
         $totalDebet = $transaksi->sum('debet');
@@ -51,7 +55,6 @@ class LaporanController extends Controller
         // 4. Saldo Akhir
         $mutasiBerjalan = $totalDebet - $totalKredit;
         $saldoAkhir = $saldoAwal + $mutasiBerjalan;
-        // ... (kode penarikan data area, kasbon, pengeluaran per kategori, dll tetap sama)
 
         $areas = \App\Models\Area::all();
 
@@ -64,7 +67,6 @@ class LaporanController extends Controller
 
         // Pemasukan lainnya di luar area (seperti Tukar Cash, dll)
         $pemasukanLainnya = $transaksi->filter(function ($r) use ($areas) {
-            $daftarArea = $areas->pluck('nama_area')->toArray();
             return $r->debet > 0 &&
                 is_null($r->area_id) &&
                 $r->kategori &&
@@ -166,19 +168,29 @@ class LaporanController extends Controller
      */
     public function pengeluaran(Request $request)
     {
-        $mulai = $request->input('tanggal_mulai', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $sampai = $request->input('tanggal_selesai', Carbon::now()->endOfMonth()->format('Y-m-d'));
+        $mulai = $request->input('tanggal_mulai', \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $sampai = $request->input('tanggal_selesai', \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d'));
 
-        $transaksi = Transaksi::with(['kategori', 'metodePembayaran', 'area', 'user'])
+        $pengeluaranCash = Transaksi::with(['kategori', 'metodePembayaran', 'area', 'user'])
             ->where('kredit', '>', 0)
             ->whereBetween('tanggal', [$mulai, $sampai])
             ->whereHas('kategori', fn($q) => $q->where('nama_kategori', '!=', 'Kasbon'))
+            ->whereHas('metodePembayaran', fn($q) => $q->where('nama_metode', 'Cash'))
             ->orderBy('tanggal', 'asc')
             ->get();
 
-        $totalKeluar = $transaksi->sum('kredit');
+        $pengeluaranTransfer = Transaksi::with(['kategori', 'metodePembayaran', 'area', 'user'])
+            ->where('kredit', '>', 0)
+            ->whereBetween('tanggal', [$mulai, $sampai])
+            ->whereHas('kategori', fn($q) => $q->where('nama_kategori', '!=', 'Kasbon'))
+            ->whereHas('metodePembayaran', fn($q) => $q->where('nama_metode', 'Transfer Bank'))
+            ->orderBy('tanggal', 'asc')
+            ->get();
 
-        return view('laporan.pengeluaran', compact('transaksi', 'totalKeluar', 'mulai', 'sampai'));
+        $totalCash = $pengeluaranCash->sum('kredit');
+        $totalTransfer = $pengeluaranTransfer->sum('kredit');
+
+        return view('laporan.pengeluaran', compact('pengeluaranCash', 'pengeluaranTransfer', 'totalCash', 'totalTransfer', 'mulai', 'sampai'));
     }
 
     /**
@@ -186,12 +198,24 @@ class LaporanController extends Controller
      */
     public function kasbon(Request $request)
     {
-        $mulai = $request->input('tanggal_mulai', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $sampai = $request->input('tanggal_selesai', Carbon::now()->endOfMonth()->format('Y-m-d'));
+        $mulai = $request->input('tanggal_mulai', \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $sampai = $request->input('tanggal_selesai', \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d'));
+        $teknisiId = $request->input('teknisi_id');
 
-        $kasbon = Transaksi::with(['user', 'area', 'metodePembayaran'])
+        $userIdsKasbon = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
+            ->whereHas('kategori', fn($q) => $q->where('nama_kategori', 'like', '%Kasbon%'))
+            ->whereNotNull('user_id')
+            ->pluck('user_id')
+            ->unique();
+
+        $teknisis = \App\Models\User::whereIn('id', $userIdsKasbon)->get();
+
+        $kasbon = \App\Models\Transaksi::with(['user', 'area', 'metodePembayaran'])
             ->whereBetween('tanggal', [$mulai, $sampai])
-            ->whereHas('kategori', fn($q) => $q->where('nama_kategori', 'Kasbon'))
+            ->whereHas('kategori', fn($q) => $q->where('nama_kategori', 'like', '%Kasbon%'))
+            ->when($teknisiId, function ($query) use ($teknisiId) {
+                return $query->where('user_id', $teknisiId);
+            })
             ->orderBy('tanggal', 'asc')
             ->get();
 
@@ -199,7 +223,7 @@ class LaporanController extends Controller
             return $row->kredit > 0 ? $row->kredit : $row->debet;
         });
 
-        return view('laporan.kasbon', compact('kasbon', 'totalKasbon', 'mulai', 'sampai'));
+        return view('laporan.kasbon', compact('kasbon', 'totalKasbon', 'mulai', 'sampai', 'teknisis', 'teknisiId'));
     }
 
     public function create(Request $request)
@@ -209,7 +233,6 @@ class LaporanController extends Controller
         $users = User::all();
         $areas = Area::all();
 
-        // Tangkap jenis default dari URL (misal: debet atau kredit)
         $defaultJenis = $request->input('jenis', 'debet');
 
         return view('laporan.create', compact('kategoris', 'metodes', 'users', 'areas', 'defaultJenis'));
@@ -229,28 +252,8 @@ class LaporanController extends Controller
         $debet = $request->jenis_transaksi === 'debet' ? $request->nominal : 0;
         $kredit = $request->jenis_transaksi === 'kredit' ? $request->nominal : 0;
 
-        // Format tanggal agar jelas terekam masuk/transaksi tanggal berapa
         $tglFormat = \Carbon\Carbon::parse($request->tanggal)->format('d/m/Y');
         $this->recordLog('Tambah Transaksi', 'Menambahkan transaksi tgl ' . $tglFormat . ' senilai Rp ' . number_format($request->nominal, 0, ',', '.') . ' (' . $request->keterangan . ')');
-
-        Transaksi::create([
-            'tanggal' => $request->tanggal,
-            'kategori_id' => $request->kategori_id,
-            'metode_pembayaran_id' => $request->metode_pembayaran_id,
-            'area_id' => $request->area_id ?: null,
-            'user_id' => $request->user_id ?: null,
-            'keterangan' => $request->keterangan,
-            'debet' => $debet,
-            'kredit' => $kredit,
-        ]);
-
-        // Kembalikan ke halaman menu input dengan pesan sukses supaya tidak 404 / Not Found
-        return redirect('/laporan/menu-input')->with('success', 'Data transaksi berhasil ditambahkan!');
-
-
-        $debet = $request->jenis_transaksi === 'debet' ? $request->nominal : 0;
-        $kredit = $request->jenis_transaksi === 'kredit' ? $request->nominal : 0;
-        $this->recordLog('Tambah Transaksi', 'Menambahkan transaksi baru senilai Rp ' . number_format($request->nominal, 0, ',', '.') . ' (' . $request->keterangan . ')');
 
         Transaksi::create([
             'tanggal' => $request->tanggal,
@@ -440,7 +443,6 @@ class LaporanController extends Controller
             'kredit' => $kredit,
         ]);
 
-        // Mengembalikan ke halaman sebelumnya secara dinamis
         return back()->with('success', 'Data transaksi berhasil diperbarui!');
     }
 
@@ -453,7 +455,6 @@ class LaporanController extends Controller
 
         Transaksi::destroy($id);
 
-        // Mengembalikan ke halaman sebelumnya secara dinamis
         return back()->with('success', 'Data transaksi berhasil dihapus!');
     }
 
@@ -462,7 +463,6 @@ class LaporanController extends Controller
         $mulai = $request->input('tanggal_mulai', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $sampai = $request->input('tanggal_selesai', Carbon::now()->endOfMonth()->format('Y-m-d'));
 
-        // 1. Hitung Saldo Awal (Akumulasi lalu + Input kategori Saldo Awal bulan ini)
         $transaksiSaldoAwal = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
             ->whereHas('kategori', function ($q) {
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
@@ -472,7 +472,6 @@ class LaporanController extends Controller
         $saldoAwalAkumulasi = $transaksiSebelumnya->sum('debet') - $transaksiSebelumnya->sum('kredit');
         $saldoAwal = $saldoAwalAkumulasi + $transaksiSaldoAwal;
 
-        // 2. Transaksi Berjalan (Kecuali kategori Saldo Awal)
         $transaksi = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
             ->whereDoesntHave('kategori', function ($q) {
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
@@ -492,13 +491,12 @@ class LaporanController extends Controller
             'Laporan_Keuangan_' . $mulai . '_sd_' . $sampai . '.xlsx'
         );
     }
-    // --- EXPORT PDF / PRINT VIEW ---
+
     public function exportPdf(Request $request)
     {
         $mulai = $request->input('tanggal_mulai', \Carbon\Carbon::now()->startOfMonth()->toDateString());
         $sampai = $request->input('tanggal_selesai', \Carbon\Carbon::now()->endOfMonth()->toDateString());
 
-        // 1. Hitung Saldo Awal (Akumulasi lalu + Input kategori Saldo Awal bulan ini)
         $transaksiSaldoAwal = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
             ->whereHas('kategori', function ($q) {
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
@@ -508,7 +506,6 @@ class LaporanController extends Controller
         $saldoAwalAkumulasi = $transaksiSebelumnya->sum('debet') - $transaksiSebelumnya->sum('kredit');
         $saldoAwal = $saldoAwalAkumulasi + $transaksiSaldoAwal;
 
-        // 2. Transaksi Berjalan (Kecuali kategori Saldo Awal)
         $transaksi = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
             ->whereDoesntHave('kategori', function ($q) {
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
@@ -523,14 +520,12 @@ class LaporanController extends Controller
 
         $areas = \App\Models\Area::all();
 
-        // Pemasukan per Area
         $pemasukanPerArea = [];
         foreach ($areas as $area) {
             $nominal = $transaksi->where('area_id', $area->id)->sum('debet');
             $pemasukanPerArea[$area->nama_area] = $nominal;
         }
 
-        // Pemasukan Lainnya (Termasuk Tukar Cash, dll di luar area & bukan kasbon/pemasangan baru)
         $pemasukanLainnya = $transaksi->filter(function ($r) {
             return $r->debet > 0 &&
                 is_null($r->area_id) &&
@@ -548,7 +543,6 @@ class LaporanController extends Controller
             return $r->debet > 0 && $r->kategori && stripos($r->kategori->nama_kategori, 'Kasbon') !== false;
         })->sum('debet');
 
-        // Pengeluaran per Kategori (Kecuali Kasbon, Saldo Awal, dan Tukar Cash)
         $kategoris = \App\Models\Kategori::all();
         $pengeluaranPerKategori = [];
         foreach ($kategoris as $kat) {
@@ -581,13 +575,12 @@ class LaporanController extends Controller
             'areas'
         ));
     }
-    // Menampilkan Form Login
+
     public function showLogin()
     {
         return view('auth.login');
     }
 
-    // Memproses Autentikasi Login
     public function processLogin(Request $request)
     {
         $credentials = $request->validate([
@@ -605,7 +598,6 @@ class LaporanController extends Controller
         ])->onlyInput('email');
     }
 
-    // Proses Logout
     public function logout(Request $request)
     {
         Auth::logout();
@@ -614,6 +606,7 @@ class LaporanController extends Controller
 
         return redirect('/login');
     }
+
     private function recordLog($aktivitas, $deskripsi)
     {
         \App\Models\ActivityLog::create([
@@ -622,9 +615,70 @@ class LaporanController extends Controller
             'deskripsi' => $deskripsi,
         ]);
     }
-    public function indexLog()
+
+    public function indexLog(Request $request)
     {
-        $logs = \App\Models\ActivityLog::with('user')->orderBy('created_at', 'desc')->paginate(20);
-        return view('laporan.activity_log', compact('logs'));
+        $mulai = $request->input('tanggal_mulai', \Carbon\Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $sampai = $request->input('tanggal_selesai', \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d'));
+
+        $query = \App\Models\ActivityLog::with('user')
+            ->whereBetween('created_at', [$mulai . ' 00:00:00', $sampai . ' 23:59:59'])
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc');
+
+        if ($request->has('search') && $request->search != '') {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('aktivitas', 'like', '%' . $search . '%')
+                    ->orWhere('deskripsi', 'like', '%' . $search . '%')
+                    ->orWhereHas('user', function ($qUser) use ($search) {
+                        $qUser->where('name', 'like', '%' . $search . '%');
+                    });
+            });
+        }
+
+        $logs = $query->paginate(20);
+
+        return view('laporan.activity_log', compact('logs', 'mulai', 'sampai'));
+    }
+
+    public function firewallManagement()
+    {
+        $activeSessions = DB::table('sessions')
+            ->leftJoin('users', 'sessions.user_id', '=', 'users.id')
+            ->select('sessions.id as session_id', 'sessions.ip_address', 'sessions.last_activity', 'users.name')
+            ->orderBy('sessions.last_activity', 'desc')
+            ->get();
+
+        $allowedIps = FirewallIp::all();
+
+        return view('laporan.firewall', compact('activeSessions', 'allowedIps'));
+    }
+
+    public function killSession($sessionId)
+    {
+        DB::table('sessions')->where('id', $sessionId)->delete();
+        return back()->with('success', 'Sesi / user berhasil ditendang dari sistem!');
+    }
+
+    public function storeIp(Request $request)
+    {
+        $request->validate([
+            'ip_address' => 'required|ip',
+            'keterangan' => 'required|string|max:255'
+        ]);
+
+        // Menggunakan updateOrCreate: Jika IP sudah ada, update keterangannya. Jika belum, buat baru.
+        FirewallIp::updateOrCreate(
+            ['ip_address' => $request->ip_address],
+            ['keterangan' => $request->keterangan]
+        );
+
+        return back()->with('success', 'IP Address berhasil disimpan ke dalam whitelist!');
+    }
+    public function destroyIp($id)
+    {
+        FirewallIp::destroy($id);
+        return back()->with('success', 'IP Address berhasil dicabut dari whitelist!');
     }
 }
