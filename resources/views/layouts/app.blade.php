@@ -250,6 +250,28 @@
         .filter-form button:hover {
             background: #2980b9;
         }
+
+        .sidebar-brand {
+            padding: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #1a252f;
+            text-align: center;
+            letter-spacing: 0.5px;
+            color: #fff;
+            border-bottom: 1px solid #34495e;
+        }
+
+        /* Styling tambahan untuk logo/gambar di bawah teks brand */
+        .sidebar-brand img {
+            display: block;
+            margin: 10px auto 0 auto;
+            /* Memberi jarak dari teks di atasnya */
+            max-width: 80px;
+            /* Sesuaikan ukuran lebar gambar sesuai kebutuhan */
+            height: auto;
+            object-fit: contain;
+        }
     </style>
 </head>
 
@@ -258,7 +280,10 @@
     <!-- SIDEBAR NAVIGATION -->
     <div class="sidebar">
         <div class="sidebar-brand">
-            Finance Fans Media
+            <div>
+                <img src="{{ asset('images/fans.png') }}" alt="Logo Fans Media">
+            </div>
+            FINANCE RETAIL FANS MEDIA
         </div>
         <ul class="sidebar-menu">
             <li><a href="{{ url('/laporan/menu-input') }}" class="btn-input">+ Menu Input Transaksi</a></li>

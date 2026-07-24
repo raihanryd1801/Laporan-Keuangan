@@ -79,10 +79,37 @@
                 style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;"></textarea>
         </div>
 
-        <div style="margin-bottom: 25px;">
-            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Nominal (Rp)</label>
-            <input type="number" name="nominal" min="0" required placeholder="Contoh: 150000"
-                style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+        <!-- BAGIAN INPUT NOMINAL DENGAN KALKULATOR OTOMATIS -->
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; font-weight: bold; margin-bottom: 5px; color: #2c3e50;">
+                Nominal Transaksi (Bisa pakai rumus) <span style="color:red;">*</span>
+            </label>
+            <p style="font-size: 11.5px; color: #7f8c8d; margin-bottom: 8px; line-height: 1.4;">
+                Anda bisa langsung mengetik angka total (contoh: <b>2600000</b>) atau menjumlahkan rinciannya dengan rumus
+                matematika (contoh: <b>4*100000 + 20*110000</b>). Sistem akan otomatis menghitungnya.
+            </p>
+
+            <div style="display: flex; align-items: center;">
+                <span
+                    style="padding: 10px 15px; background: #e9ecef; border: 1px solid #ced4da; border-right: none; border-radius: 4px 0 0 4px; font-weight: bold; color: #495057;">
+                    Rp
+                </span>
+
+                <!-- Input yang dilihat dan diketik user -->
+                <input type="text" id="input_rumus_nominal" class="form-control"
+                    placeholder="Contoh rumus: 4*100000 + 20*110000" value="{{ old('nominal') }}"
+                    style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 0 4px 4px 0; font-size: 14px;"
+                    autocomplete="off" required>
+
+                <!-- Input tersembunyi yang akan dikirim ke Controller Laravel -->
+                <input type="hidden" name="nominal" id="nominal_asli" value="{{ old('nominal') }}" required>
+            </div>
+
+            <!-- Teks hasil kalkulasi otomatis -->
+            <div id="tampil_hasil"
+                style="margin-top: 8px; font-size: 15px; font-weight: 800; color: #27ae60; display: none;">
+                = Rp 0
+            </div>
         </div>
 
         <button type="submit"
@@ -90,4 +117,58 @@
             Simpan Transaksi
         </button>
     </form>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            let inputRumus = document.getElementById('input_rumus_nominal');
+            let hiddenNominal = document.getElementById('nominal_asli');
+            let tampilHasil = document.getElementById('tampil_hasil');
+
+            function kalkulasiOtomatis() {
+                let inputVal = inputRumus.value;
+
+                // 1. Cegah huruf masuk (hanya izinkan angka dan simbol matematika: + - * / ( ) )
+                let sanitized = inputVal.replace(/[^0-9+\-*/(). ]/g, '');
+
+                // Jika user mencoba mengetik huruf, langsung bersihkan
+                if (sanitized !== inputVal) {
+                    inputRumus.value = sanitized;
+                }
+
+                // Jika kosong, sembunyikan hasil
+                if (sanitized.trim() === '') {
+                    tampilHasil.style.display = 'none';
+                    hiddenNominal.value = '';
+                    return;
+                }
+
+                // 2. Coba evaluasi rumusnya
+                try {
+                    // Gunakan Function constructor untuk membaca operasi hitungan murni
+                    let hitung = new Function('return ' + sanitized)();
+
+                    // Cek jika hasil hitungan sukses berbentuk angka
+                    if (hitung !== undefined && !isNaN(hitung) && isFinite(hitung)) {
+                        hiddenNominal.value = hitung; // Masukkan angka bulat ke database (misal: 2600000)
+                        tampilHasil.innerHTML = '= Rp ' + hitung.toLocaleString('id-ID'); // Munculkan: = Rp 2.600.000
+                        tampilHasil.style.display = 'block';
+                    } else {
+                        tampilHasil.style.display = 'none';
+                        hiddenNominal.value = '';
+                    }
+                } catch (error) {
+                    // Abaikan error di background saat user sedang proses mengetik setengah jalan (misal ngetik "4*")
+                    tampilHasil.style.display = 'none';
+                    hiddenNominal.value = '';
+                }
+            }
+
+            // Jalankan setiap kali ada ketikan baru
+            inputRumus.addEventListener('input', kalkulasiOtomatis);
+
+            // Jika ada error validasi Laravel dan halaman reload membawa old() data, trigger otomatis
+            if (inputRumus.value !== '') {
+                kalkulasiOtomatis();
+            }
+        });
+    </script>
 @endsection

@@ -229,7 +229,9 @@ class LaporanController extends Controller
         $debet = $request->jenis_transaksi === 'debet' ? $request->nominal : 0;
         $kredit = $request->jenis_transaksi === 'kredit' ? $request->nominal : 0;
 
-        $this->recordLog('Tambah Transaksi', 'Menambahkan transaksi baru senilai Rp ' . number_format($request->nominal, 0, ',', '.') . ' (' . $request->keterangan . ')');
+        // Format tanggal agar jelas terekam masuk/transaksi tanggal berapa
+        $tglFormat = \Carbon\Carbon::parse($request->tanggal)->format('d/m/Y');
+        $this->recordLog('Tambah Transaksi', 'Menambahkan transaksi tgl ' . $tglFormat . ' senilai Rp ' . number_format($request->nominal, 0, ',', '.') . ' (' . $request->keterangan . ')');
 
         Transaksi::create([
             'tanggal' => $request->tanggal,

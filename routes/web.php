@@ -33,9 +33,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/laporan/teknisi/store', [LaporanController::class, 'storeTeknisi']);
     Route::get('/laporan/teknisi/hapus/{id}', [LaporanController::class, 'destroyTeknisi']); // Pastikan menggunakan Route::get
     Route::post('/laporan/teknisi/simpan', [LaporanController::class, 'storeTeknisi']);
-    Route::get('/laporan/teknisi/edit/{id}', [LaporanController::class, 'editArea']);
-    Route::match(['get', 'post'], '/laporan/teknisi/update/{id}', [LaporanController::class, 'updateArea']);
-    Route::get('/laporan/teknisi/hapus/{id}', [LaporanController::class, 'destroyArea']);
+    Route::get('/laporan/teknisi/edit/{id}', [LaporanController::class, 'editTeknisi']);
+    Route::match(['get', 'post'], '/laporan/teknisi/update/{id}', [LaporanController::class, 'updateTeknisi']);
+    Route::get('/laporan/teknisi/hapus/{id}', [LaporanController::class, 'destroyTeknisi']);
 
     Route::get('/laporan/area', [LaporanController::class, 'laporanArea']);
     Route::get('/laporan/master-area', [LaporanController::class, 'indexArea']);
