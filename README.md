@@ -1,59 +1,149 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+Sistem Laporan Keuangan Retail - SKYKOM FINANCE RETAIL
+Aplikasi berbasis Laravel untuk mencatat dan melaporkan transaksi keuangan retail. Cocok untuk usaha yang memiliki banyak area/wilayah pemasangan dan teknisi lapangan.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## 📸 Tampilan Aplikasi
 
-## About Laravel
+| Halaman | Screenshot |
+|---------|------------|
+| Login | ![Login](https://raw.githubusercontent.com/username/repo/main/public/screenshots/login.png) |
+| Keuangan Utama | ![Keuangan Utama](https://raw.githubusercontent.com/username/repo/main/public/screenshots/keuanganut.png) |
+| Statistik | ![Statistik](https://raw.githubusercontent.com/username/repo/main/public/screenshots/statistic.png) |
+| Laporan Pemasukan | ![Pemasukan](https://raw.githubusercontent.com/username/repo/main/public/screenshots/pemasukan.png) |
+| Laporan Pengeluaran | ![Pengeluaran](https://raw.githubusercontent.com/username/repo/main/public/screenshots/pengeluaran.png) |
+| Laporan Per Area | ![Per Area](https://raw.githubusercontent.com/username/repo/main/public/screenshots/laparea.png) |
+| Kasbon Teknisi | ![Kasbon](https://raw.githubusercontent.com/username/repo/main/public/screenshots/kasbontek.png) |
+| Master Area | ![Master Area](https://raw.githubusercontent.com/username/repo/main/public/screenshots/masarea.png) |
+| Master Kategori | ![Master Kategori](https://raw.githubusercontent.com/username/repo/main/public/screenshots/masket.png) |
+| Data Teknisi | ![Data Teknisi](https://raw.githubusercontent.com/username/repo/main/public/screenshots/datek.png) |
+| History Log | ![History Log](https://raw.githubusercontent.com/username/repo/main/public/screenshots/historylog.png) |
+| Firewall & Sesi | ![Firewall](https://raw.githubusercontent.com/username/repo/main/public/screenshots/firewall.png) |
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+✨ Fitur Utama
+Input Transaksi – Catat pemasukan (cash/transfer), pengeluaran operasional, dan kasbon teknisi. Bisa pilih area, kategori, dan metode pembayaran.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Laporan Keuangan Utama – Tampilkan saldo awal, pemasukan berjalan, pengeluaran, dan saldo akhir dalam satu tabel rekap.
 
-## Learning Laravel
+Laporan Spesifik – Pemasangan baru, pemasukan per metode (cash/transfer), pengeluaran operasional, kasbon teknisi, dan laporan per area.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Filter Tanggal – Semua laporan bisa difilter dengan rentang tanggal.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Statistik Grafik – Tampilkan grafik bar pemasukan vs pengeluaran per bulan/hari, serta diagram donat distribusi per kategori.
 
-## Laravel Sponsors
+Master Data – Kelola area retail, kategori transaksi, dan daftar teknisi/pegawai.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Ekspor Excel & PDF – Dari halaman Keuangan Utama, cetak laporan ke Excel atau PDF dengan kop surat dan tanda tangan.
 
-### Premium Partners
+Aktivitas Log – Setiap tambah, edit, atau hapus transaksi tercatat dengan detail.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Firewall Sederhana – Whitelist IP yang diizinkan akses, dan lihat sesi aktif untuk ditendang (kill session).
 
-## Contributing
+🛠️ Instalasi
+Clone atau salin project ke server lokal.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+bash
+git clone https://github.com/username/skykom-finance.git
+cd skykom-finance
+Install dependency PHP.
 
-## Code of Conduct
+bash
+composer install
+Buat file .env dari contoh.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+bash
+cp .env.example .env
+Generate key aplikasi.
 
-## Security Vulnerabilities
+bash
+php artisan key:generate
+Sesuaikan konfigurasi database di .env
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=skykom_finance
+DB_USERNAME=root
+DB_PASSWORD=
+Jalankan migrasi dan seeder (untuk data awal).
 
-## License
+bash
+php artisan migrate --seed
+Jalankan server development.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+bash
+php artisan serve
+Akses di http://localhost:8000.
+
+Login default (dari seeder):
+
+Email: admin@example.com
+
+Password: password
+
+📂 Struktur Folder Penting
+text
+app/
+├── Http/
+│   └── Controllers/
+│       └── LaporanController.php   # controller utama
+resources/
+└── views/
+    └── laporan/                    # semua file blade
+        ├── keuangan.blade.php
+        ├── statistic.blade.php
+        ├── pemasukan.blade.php
+        ├── pengeluaran.blade.php
+        ├── area.blade.php
+        ├── kasbon.blade.php
+        ├── master_area.blade.php
+        ├── master_kategori.blade.php
+        ├── teknisi.blade.php
+        ├── activity_log.blade.php
+        ├── firewall.blade.php
+        └── ...
+public/
+└── screenshots/                    # gambar untuk README
+🧩 Cara Penggunaan Singkat
+Login dengan akun yang sudah terdaftar.
+
+Dari dashboard, pilih Menu Input untuk mencatat transaksi baru.
+
+Isi tanggal, jenis (debet/kredit), kategori, area (opsional), metode, dan nominal.
+
+Untuk kasbon, pilih nama teknisi.
+
+Lihat laporan di menu Keuangan Utama untuk rekap keseluruhan.
+
+Gunakan filter tanggal di setiap halaman laporan.
+
+Kelola data referensi di menu Master Data (area, kategori, teknisi).
+
+Pantau aktivitas melalui Log Aktivitas.
+
+Untuk keamanan, atur IP yang diizinkan di Firewall & Sesi.
+
+📦 Dependensi
+Laravel 10.x
+
+MySQL / MariaDB
+
+DomPDF (untuk ekspor PDF)
+
+Maatwebsite Excel (untuk ekspor Excel)
+
+Chart.js (untuk grafik)
+
+⚙️ Catatan Teknis
+Pastikan ekstensi PHP gd, zip, dan mbstring terinstal.
+
+Jika ekspor PDF error, jalankan:
+
+bash
+composer require barryvdh/laravel-dompdf
+Untuk production, atur permission folder storage dan bootstrap/cache.
+
+📝 Lisensi
+Hak cipta milik PT. Fans Media Jember. Untuk penggunaan internal.
+
+Selamat menggunakan! Jika ada kendala, cek log di storage/logs/laravel.log atau hubungi admin sistem.
