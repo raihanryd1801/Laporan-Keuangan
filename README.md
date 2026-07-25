@@ -5,18 +5,18 @@ Aplikasi berbasis Laravel untuk mencatat dan melaporkan transaksi keuangan retai
 
 | Halaman | Screenshot |
 |---------|------------|
-| Login | ![Login](https://raw.githubusercontent.com/username/repo/main/public/screenshots/login.png) |
-| Keuangan Utama | ![Keuangan Utama](https://raw.githubusercontent.com/username/repo/main/public/screenshots/keuanganut.png) |
-| Statistik | ![Statistik](https://raw.githubusercontent.com/username/repo/main/public/screenshots/statistic.png) |
-| Laporan Pemasukan | ![Pemasukan](https://raw.githubusercontent.com/username/repo/main/public/screenshots/pemasukan.png) |
-| Laporan Pengeluaran | ![Pengeluaran](https://raw.githubusercontent.com/username/repo/main/public/screenshots/pengeluaran.png) |
-| Laporan Per Area | ![Per Area](https://raw.githubusercontent.com/username/repo/main/public/screenshots/laparea.png) |
-| Kasbon Teknisi | ![Kasbon](https://raw.githubusercontent.com/username/repo/main/public/screenshots/kasbontek.png) |
-| Master Area | ![Master Area](https://raw.githubusercontent.com/username/repo/main/public/screenshots/masarea.png) |
-| Master Kategori | ![Master Kategori](https://raw.githubusercontent.com/username/repo/main/public/screenshots/masket.png) |
-| Data Teknisi | ![Data Teknisi](https://raw.githubusercontent.com/username/repo/main/public/screenshots/datek.png) |
-| History Log | ![History Log](https://raw.githubusercontent.com/username/repo/main/public/screenshots/historylog.png) |
-| Firewall & Sesi | ![Firewall](https://raw.githubusercontent.com/username/repo/main/public/screenshots/firewall.png) |
+| Login | ![Login](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/login.png) |
+| Keuangan Utama | ![Keuangan Utama](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/keuanganut.png) |
+| Statistik | ![Statistik](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/statistic.png) |
+| Laporan Pemasukan | ![Pemasukan](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/pemasukan.png) |
+| Laporan Pengeluaran | ![Pengeluaran](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/pengeluaran.png) |
+| Laporan Per Area | ![Per Area](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/laparea.png) |
+| Kasbon Teknisi | ![Kasbon](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/kasbontek.png) |
+| Master Area | ![Master Area](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/masarea.png) |
+| Master Kategori | ![Master Kategori](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/masket.png) |
+| Data Teknisi | ![Data Teknisi](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/datek.png) |
+| History Log | ![History Log](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/historylog.png) |
+| Firewall & Sesi | ![Firewall](https://raw.githubusercontent.com/raihanryd1801/repo/main/public/screenshots/firewall.png) |
 
 
 ✨ Fitur Utama
@@ -42,7 +42,7 @@ Firewall Sederhana – Whitelist IP yang diizinkan akses, dan lihat sesi aktif u
 Clone atau salin project ke server lokal.
 
 bash
-git clone https://github.com/username/skykom-finance.git
+git clone https://github.com/raihanryd1801/skykom-finance.git
 cd skykom-finance
 Install dependency PHP.
 
