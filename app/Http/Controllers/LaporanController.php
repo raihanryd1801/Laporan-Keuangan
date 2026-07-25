@@ -681,4 +681,93 @@ class LaporanController extends Controller
         FirewallIp::destroy($id);
         return back()->with('success', 'IP Address berhasil dicabut dari whitelist!');
     }
+    // --- HALAMAN STATISTIK KEUANGAN ---
+    // --- HALAMAN STATISTIK KEUANGAN ---
+    // --- HALAMAN STATISTIK KEUANGAN ---
+    public function statistik(Request $request)
+    {
+        $tahun = $request->input('tahun', date('Y'));
+        $bulan = $request->input('bulan', 'all');
+
+        // Ambil transaksi di tahun tersebut (Kecuali Saldo Awal)
+        $query = \App\Models\Transaksi::with('kategori')
+            ->whereYear('tanggal', $tahun)
+            ->whereDoesntHave('kategori', function ($q) {
+                $q->where('nama_kategori', 'like', '%Saldo Awal%');
+            });
+
+        // Jika filter bulan spesifik dipilih
+        if ($bulan !== 'all') {
+            $query->whereMonth('tanggal', $bulan);
+        }
+
+        $transaksi = $query->get();
+
+        // 1. Data untuk Bar Chart
+        if ($bulan === 'all') {
+            // Jika Semua Bulan = Tampilkan 12 Bulan
+            $chartLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            $pemasukanData = array_fill(0, 12, 0);
+            $pengeluaranData = array_fill(0, 12, 0);
+
+            foreach ($transaksi as $trx) {
+                $index = date('n', strtotime($trx->tanggal)) - 1;
+                if ($trx->debet > 0)
+                    $pemasukanData[$index] += $trx->debet;
+                if ($trx->kredit > 0)
+                    $pengeluaranData[$index] += $trx->kredit;
+            }
+        } else {
+            // Jika 1 Bulan Spesifik = Tampilkan Tanggal (1 s.d 30/31)
+            $jumlahHari = cal_days_in_month(CAL_GREGORIAN, $bulan, $tahun);
+            $chartLabels = [];
+            $pemasukanData = array_fill(0, $jumlahHari, 0);
+            $pengeluaranData = array_fill(0, $jumlahHari, 0);
+
+            for ($i = 1; $i <= $jumlahHari; $i++) {
+                $chartLabels[] = 'Tgl ' . $i;
+            }
+
+            foreach ($transaksi as $trx) {
+                $index = date('j', strtotime($trx->tanggal)) - 1;
+                if ($trx->debet > 0)
+                    $pemasukanData[$index] += $trx->debet;
+                if ($trx->kredit > 0)
+                    $pengeluaranData[$index] += $trx->kredit;
+            }
+        }
+
+        // 2. Data untuk Pie Chart (Per Kategori)
+        $piePemasukan = [];
+        $piePengeluaran = [];
+
+        foreach ($transaksi as $trx) {
+            $namaKategori = $trx->kategori ? $trx->kategori->nama_kategori : 'Tanpa Kategori';
+
+            if ($trx->debet > 0) {
+                $piePemasukan[$namaKategori] = ($piePemasukan[$namaKategori] ?? 0) + $trx->debet;
+            }
+            if ($trx->kredit > 0) {
+                $piePengeluaran[$namaKategori] = ($piePengeluaran[$namaKategori] ?? 0) + $trx->kredit;
+            }
+        }
+
+        // Hitung total 
+        $totalPemasukan = array_sum($pemasukanData);
+        $totalPengeluaran = array_sum($pengeluaranData);
+        $labaRugi = $totalPemasukan - $totalPengeluaran;
+
+        return view('laporan.statistic', compact(
+            'tahun',
+            'bulan',
+            'chartLabels',
+            'pemasukanData',
+            'pengeluaranData',
+            'totalPemasukan',
+            'totalPengeluaran',
+            'labaRugi',
+            'piePemasukan',
+            'piePengeluaran'
+        ));
+    }
 }

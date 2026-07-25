@@ -280,10 +280,8 @@
     <!-- SIDEBAR NAVIGATION -->
     <div class="sidebar">
         <div class="sidebar-brand">
-            <div>
-                <img src="{{ asset('images/fans.png') }}" alt="Logo Fans Media">
-            </div>
-            FINANCE RETAIL FANS MEDIA
+
+            SKYKOM FINANCE RETAIL
         </div>
         <ul class="sidebar-menu">
             <li><a href="{{ url('/laporan/menu-input') }}" class="btn-input">+ Menu Input Transaksi</a></li>
@@ -291,6 +289,10 @@
             <div class="menu-category" style="margin-top: 15px;">Utama</div>
             <li><a href="{{ url('/laporan/keuangan') }}"
                     class="{{ request()->is('laporan/keuangan') ? 'active' : '' }}">Keuangan Utama</a></li>
+            <a class="nav-link {{ request()->is('laporan/statistik') ? 'active' : '' }}"
+                href="{{ url('/laporan/statistik') }}">
+                Statistik Keuangan
+            </a>
 
             <div class="menu-category">Laporan Spesifik</div>
             <li><a href="{{ url('/laporan/pemasangan-baru') }}"

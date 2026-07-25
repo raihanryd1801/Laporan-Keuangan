@@ -66,6 +66,11 @@ Route::middleware(['auth', 'firewall.ip'])->group(function () {
     Route::delete('/laporan/firewall/kill/{id}', [LaporanController::class, 'killSession']);
     // Di dalam grup Route::middleware(['auth', 'firewall.ip'])->group(function () { ... })
     Route::delete('/laporan/firewall/delete-ip/{id}', [LaporanController::class, 'destroyIp']);
+
+    // Laporan Utama
+    Route::get('/laporan/keuangan', [LaporanController::class, 'laporanKeuangan']);
+    Route::get('/laporan/statistik', [LaporanController::class, 'statistik']); // <--- TAMBAHKAN INI
+    // ...
 });
 
 // Redirect default ke laporan keuangan
