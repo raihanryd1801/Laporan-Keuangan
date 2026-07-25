@@ -5,18 +5,19 @@ Aplikasi berbasis Laravel untuk mencatat dan melaporkan transaksi keuangan retai
 
 | Halaman | Screenshot |
 |---------|------------|
-| Login | ![Login](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/login.png) |
-| Keuangan Utama | ![Keuangan Utama](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/keuanganut.png) |
-| Statistik | ![Statistik](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/statistic.png) |
-| Laporan Pemasukan | ![Pemasukan](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/pemasukan.png) |
-| Laporan Pengeluaran | ![Pengeluaran](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/pengeluaran.png) |
-| Laporan Per Area | ![Per Area](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/laparea.png) |
-| Kasbon Teknisi | ![Kasbon](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/kasbontek.png) |
-| Master Area | ![Master Area](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/masarea.png) |
-| Master Kategori | ![Master Kategori](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/masket.png) |
-| Data Teknisi | ![Data Teknisi](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/datek.png) |
-| History Log | ![History Log](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/historylog.png) |
-| Firewall & Sesi | ![Firewall](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/screenshots/firewall.png) |
+| Login | ![Login](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/login.png) |
+| Keuangan Utama | ![Keuangan Utama](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/keuanganut.png) |
+| Statistik | ![Statistik](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/statistic.png) |
+| Laporan Pemasukan | ![Pemasukan](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/pemasukan.png) |
+| Laporan Pengeluaran | ![Pengeluaran](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/pengeluaran.png) |
+| Laporan Per Area | ![Per Area](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/laparea.png) |
+| Kasbon Teknisi | ![Kasbon](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/kasbontek.png) |
+| Master Area | ![Master Area](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/masarea.png) |
+| Master Kategori | ![Master Kategori](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/masket.png) |
+| Data Teknisi | ![Data Teknisi](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/datek.png) |
+| History Log | ![History Log](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/historylog.png) |
+| Firewall & Sesi | ![Firewall](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/firewall.png) |
+
 
 
 ✨ Fitur Utama
