@@ -1,9 +1,10 @@
-Sistem Laporan Keuangan Retail - SKYKOM FINANCE RETAIL
+## Sistem Laporan Keuangan Retail - SKYKOM FINANCE RETAIL
+
 Aplikasi berbasis Laravel untuk mencatat dan melaporkan transaksi keuangan retail. Cocok untuk usaha yang memiliki banyak area/wilayah pemasangan dan teknisi lapangan.
 
-## 📸 Tampilan Aplikasi
+## Tampilan Aplikasi
 
-| Halaman | Screenshot |
+| Halaman | Dokumentasi |
 |---------|------------|
 | Login | ![Login](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/login.png) |
 | Keuangan Utama | ![Keuangan Utama](https://raw.githubusercontent.com/raihanryd1801/Laporan-Keuangan/main/public/images/screenshots/keuanganut.png) |
@@ -20,77 +21,140 @@ Aplikasi berbasis Laravel untuk mencatat dan melaporkan transaksi keuangan retai
 
 
 
-✨ Fitur Utama
-Input Transaksi – Catat pemasukan (cash/transfer), pengeluaran operasional, dan kasbon teknisi. Bisa pilih area, kategori, dan metode pembayaran.
+# Skykom Finance
 
-Laporan Keuangan Utama – Tampilkan saldo awal, pemasukan berjalan, pengeluaran, dan saldo akhir dalam satu tabel rekap.
+Aplikasi manajemen keuangan retail berbasis Laravel untuk mencatat pemasukan, pengeluaran, kasbon teknisi, serta menghasilkan laporan keuangan lengkap dengan grafik statistik dan fitur ekspor.
 
-Laporan Spesifik – Pemasangan baru, pemasukan per metode (cash/transfer), pengeluaran operasional, kasbon teknisi, dan laporan per area.
+---
 
-Filter Tanggal – Semua laporan bisa difilter dengan rentang tanggal.
+## Fitur
 
-Statistik Grafik – Tampilkan grafik bar pemasukan vs pengeluaran per bulan/hari, serta diagram donat distribusi per kategori.
+- **Input Transaksi**
+  - Mencatat pemasukan (Cash/Transfer)
+  - Mencatat pengeluaran operasional
+  - Mencatat kasbon teknisi
+  - Mendukung area, kategori, dan metode pembayaran
 
-Master Data – Kelola area retail, kategori transaksi, dan daftar teknisi/pegawai.
+- **Laporan Keuangan**
+  - Rekap saldo awal
+  - Total pemasukan
+  - Total pengeluaran
+  - Saldo akhir
 
-Ekspor Excel & PDF – Dari halaman Keuangan Utama, cetak laporan ke Excel atau PDF dengan kop surat dan tanda tangan.
+- **Laporan Detail**
+  - Pemasangan Baru
+  - Pemasukan Cash
+  - Pemasukan Transfer
+  - Pengeluaran Operasional
+  - Kasbon Teknisi
+  - Laporan per Area
 
-Aktivitas Log – Setiap tambah, edit, atau hapus transaksi tercatat dengan detail.
+- **Filter Tanggal**
+  - Seluruh laporan dapat difilter berdasarkan rentang tanggal.
 
-Firewall Sederhana – Whitelist IP yang diizinkan akses, dan lihat sesi aktif untuk ditendang (kill session).
+- **Statistik**
+  - Grafik pemasukan dan pengeluaran
+  - Diagram distribusi transaksi berdasarkan kategori
 
-🛠️ Instalasi
-Clone atau salin project ke server lokal.
+- **Master Data**
+  - Area Retail
+  - Kategori Transaksi
+  - Data Teknisi
 
-bash
+- **Ekspor Laporan**
+  - Microsoft Excel
+  - PDF lengkap dengan kop surat dan tanda tangan
+
+- **Activity Log**
+  - Mencatat aktivitas tambah, ubah, dan hapus data.
+
+- **Firewall & Session**
+  - Whitelist IP
+  - Monitoring sesi aktif
+  - Kill Session
+
+---
+
+# Instalasi
+
+## 1. Clone Repository
+
+```bash
 git clone https://github.com/raihanryd1801/skykom-finance.git
 cd skykom-finance
-Install dependency PHP.
+```
 
-bash
+## 2. Install Dependency
+
+```bash
 composer install
-Buat file .env dari contoh.
+```
 
-bash
+## 3. Copy File Environment
+
+```bash
 cp .env.example .env
-Generate key aplikasi.
+```
 
-bash
+## 4. Generate Application Key
+
+```bash
 php artisan key:generate
-Sesuaikan konfigurasi database di .env
+```
 
-env
+## 5. Konfigurasi Database
+
+Sesuaikan file `.env`.
+
+```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=skykom_finance
 DB_USERNAME=root
 DB_PASSWORD=
-Jalankan migrasi dan seeder (untuk data awal).
+```
 
-bash
+## 6. Jalankan Migration dan Seeder
+
+```bash
 php artisan migrate --seed
-Jalankan server development.
+```
 
-bash
+## 7. Jalankan Aplikasi
+
+```bash
 php artisan serve
-Akses di http://localhost:8000.
+```
 
-Login default (dari seeder):
+Aplikasi dapat diakses melalui:
 
-Email: admin@example.com
+```
+http://localhost:8000
+```
 
-Password: password
+---
 
-📂 Struktur Folder Penting
-text
+# Login Default
+
+```
+Email    : admin@example.com
+Password : password
+```
+
+---
+
+# Struktur Folder
+
+```text
 app/
 ├── Http/
 │   └── Controllers/
-│       └── LaporanController.php   # controller utama
+│       └── LaporanController.php
+
 resources/
 └── views/
-    └── laporan/                    # semua file blade
+    └── laporan/
         ├── keuangan.blade.php
         ├── statistic.blade.php
         ├── pemasukan.blade.php
@@ -103,48 +167,75 @@ resources/
         ├── activity_log.blade.php
         ├── firewall.blade.php
         └── ...
+
 public/
-└── screenshots/                    # gambar untuk README
-🧩 Cara Penggunaan Singkat
-Login dengan akun yang sudah terdaftar.
+└── screenshots/
+```
 
-Dari dashboard, pilih Menu Input untuk mencatat transaksi baru.
+---
 
-Isi tanggal, jenis (debet/kredit), kategori, area (opsional), metode, dan nominal.
+# Cara Penggunaan
 
-Untuk kasbon, pilih nama teknisi.
+1. Login menggunakan akun yang tersedia.
+2. Tambahkan transaksi melalui menu **Input Transaksi**.
+3. Pilih jenis transaksi, kategori, area, metode pembayaran, dan nominal.
+4. Untuk kasbon, pilih teknisi yang bersangkutan.
+5. Lihat rekap pada menu **Keuangan Utama**.
+6. Gunakan filter tanggal untuk melihat laporan tertentu.
+7. Kelola data Area, Kategori, dan Teknisi melalui menu **Master Data**.
+8. Pantau seluruh aktivitas melalui **Activity Log**.
+9. Atur keamanan akses melalui menu **Firewall & Session**.
 
-Lihat laporan di menu Keuangan Utama untuk rekap keseluruhan.
+---
 
-Gunakan filter tanggal di setiap halaman laporan.
+# Dependensi
 
-Kelola data referensi di menu Master Data (area, kategori, teknisi).
+- Laravel 10.x
+- PHP 8.x
+- MySQL / MariaDB
+- Laravel DomPDF
+- Laravel Excel (Maatwebsite)
+- Chart.js
 
-Pantau aktivitas melalui Log Aktivitas.
+---
 
-Untuk keamanan, atur IP yang diizinkan di Firewall & Sesi.
+# Catatan
 
-📦 Dependensi
-Laravel 10.x
+Pastikan ekstensi PHP berikut telah aktif:
 
-MySQL / MariaDB
+- gd
+- mbstring
+- zip
 
-DomPDF (untuk ekspor PDF)
+Jika fitur ekspor PDF belum tersedia, jalankan:
 
-Maatwebsite Excel (untuk ekspor Excel)
-
-Chart.js (untuk grafik)
-
-⚙️ Catatan Teknis
-Pastikan ekstensi PHP gd, zip, dan mbstring terinstal.
-
-Jika ekspor PDF error, jalankan:
-
-bash
+```bash
 composer require barryvdh/laravel-dompdf
-Untuk production, atur permission folder storage dan bootstrap/cache.
+```
 
-📝 Lisensi
-Hak cipta milik PT. Fans Media Jember. Untuk penggunaan internal.
+Untuk deployment production, pastikan permission folder berikut telah sesuai:
 
-Selamat menggunakan! Jika ada kendala, cek log di storage/logs/laravel.log atau hubungi admin sistem.
+```
+storage/
+bootstrap/cache/
+```
+
+---
+
+# Lisensi
+
+Hak cipta © PT. Fans Media Jember.
+
+Aplikasi ini ditujukan untuk penggunaan internal perusahaan.
+
+---
+
+## Bantuan
+
+Apabila mengalami kendala, periksa log aplikasi pada:
+
+```
+storage/logs/laravel.log
+```
+
+atau hubungi administrator sistem.
