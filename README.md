@@ -123,10 +123,6 @@ php artisan migrate --seed
 
 ## 7. Jalankan Aplikasi
 
-```bash
-php artisan serve
-```
-
 Aplikasi dapat diakses melalui:
 ```bash
 php /var/www/html/finance/artisan serve --host=0.0.0.0 --port=8005
