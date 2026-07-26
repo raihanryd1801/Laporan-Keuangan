@@ -80,7 +80,7 @@ Aplikasi manajemen keuangan retail berbasis Laravel untuk mencatat pemasukan, pe
 ## 1. Clone Repository
 
 ```bash
-git clone https://github.com/raihanryd1801/skykom-finance.git
+git clone https://github.com/raihanryd1801/Laporan-Keuangan.git
 cd skykom-finance
 ```
 
@@ -128,6 +128,9 @@ php artisan serve
 ```
 
 Aplikasi dapat diakses melalui:
+```bash
+php /var/www/html/finance/artisan serve --host=0.0.0.0 --port=8005
+```
 
 ```
 http://localhost:8000
@@ -135,11 +138,13 @@ http://localhost:8000
 
 ---
 
-# Login Default
-
+# Login Menggunakan PHP Thinker
+```bash
+php artisan tinker --execute="\App\Models\User::create(['name' => 'Admin Fans Media', 'email' => 'admin@test.co.id', 'password' => bcrypt('password123'), 'jabatan' => 'Admin']);"
 ```
-Email    : admin@example.com
-Password : password
+```
+Email    : admin@test.co.id
+Password : password123
 ```
 
 ---
