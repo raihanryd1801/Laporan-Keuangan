@@ -599,7 +599,7 @@ class LaporanController extends Controller
         }
 
         // Catat log gagal login ke database activity_logs
-        $this->recordLog('Gagal Login', 'Percobaan login gagal untuk email: ' . $request->email . ' dari IP: ' . $request->ip());
+        $this->recordLog('fail2ban', 'Percobaan login gagal untuk email: ' . $request->email . ' dari IP: ' . $request->ip());
 
         // Format log file (opsional jika masih ingin dicatat di laravel.log)
         Log::warning("[AUTH-FAILED] Failed login attempt from IP: {$request->ip()} for email: {$request->email}");
