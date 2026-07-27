@@ -14,6 +14,7 @@ use App\Exports\KeuanganExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class LaporanController extends Controller
 {
@@ -590,8 +591,18 @@ class LaporanController extends Controller
 
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
+
+            // Opsional: Catat log jika login sukses
+            $this->recordLog('Login Berhasil', 'Pengguna dengan email ' . $request->email . ' berhasil masuk ke sistem dari IP: ' . $request->ip());
+
             return redirect()->intended('/laporan/keuangan');
         }
+
+        // Catat log gagal login ke database activity_logs
+        $this->recordLog('Gagal Login', 'Percobaan login gagal untuk email: ' . $request->email . ' dari IP: ' . $request->ip());
+
+        // Format log file (opsional jika masih ingin dicatat di laravel.log)
+        Log::warning("[AUTH-FAILED] Failed login attempt from IP: {$request->ip()} for email: {$request->email}");
 
         return back()->withErrors([
             'email' => 'Email atau password yang anda masukkan salah.',
@@ -623,7 +634,7 @@ class LaporanController extends Controller
 
         $query = \App\Models\ActivityLog::with('user')
             ->whereBetween('created_at', [$mulai . ' 00:00:00', $sampai . ' 23:59:59'])
-            ->orderBy('created_at', 'asc')
+            ->orderBy('created_at', 'desc')
             ->orderBy('id', 'asc');
 
         if ($request->has('search') && $request->search != '') {
@@ -642,25 +653,154 @@ class LaporanController extends Controller
         return view('laporan.activity_log', compact('logs', 'mulai', 'sampai'));
     }
 
+    // --- HELPER UNTUK SYNCHRONIZE FAIL2BAN CONFIG ---
+    private function generateFail2banConfig()
+    {
+        $allowedIps = \App\Models\FirewallIp::pluck('ip_address')->toArray();
+        $defaultIgnore = ['127.0.0.1', '118.99.116.4', '103.148.197.17'];
+        $allIgnoreIps = array_unique(array_merge($defaultIgnore, $allowedIps));
+        $ignoreIpString = implode(' ', $allIgnoreIps);
+
+        $configContent = "[laravel-auth]\n" .
+            "enabled = true\n" .
+            "filter = laravel-auth\n" .
+            "backend = auto\n" .
+            "logpath = /var/www/html/finance/storage/logs/laravel.log\n" .
+            "port = 8005\n" .
+            "action = iptables-multiport[name=laravel-auth, port=\"8005\", protocol=tcp]\n" .
+            "maxretry = 3\n" .
+            "findtime = 600\n" .
+            "bantime = 3600\n" .
+            "ignoreip = " . $ignoreIpString . "\n";
+
+        $tempPath = storage_path('app/laravel-auth.local');
+        file_put_contents($tempPath, $configContent);
+
+        // Eksekusi sudo cp dan restart fail2ban sesuai izin visudo abang
+        shell_exec('sudo cp ' . $tempPath . ' /etc/fail2ban/jail.d/laravel-auth.local');
+        shell_exec('sudo systemctl restart fail2ban');
+    }
+
     public function firewallManagement()
     {
-        $activeSessions = DB::table('sessions')
-            ->leftJoin('users', 'sessions.user_id', '=', 'users.id')
-            ->select('sessions.id as session_id', 'sessions.ip_address', 'sessions.last_activity', 'users.name')
-            ->orderBy('sessions.last_activity', 'desc')
-            ->get();
+        // 1. Whitelist untuk Aplikasi Web
+        $allowedIps = \App\Models\FirewallIp::all();
 
-        $allowedIps = FirewallIp::all();
+        // 2. Konfigurasi khusus Fail2ban dari tabel terpisah
+        $fail2banConfig = \App\Models\Fail2banConfig::first();
+        $fail2banIps = [];
+        if ($fail2banConfig && !empty($fail2banConfig->ignoreip)) {
+            $fail2banIps = array_filter(explode(' ', trim($fail2banConfig->ignoreip)));
+        }
 
-        return view('laporan.firewall', compact('activeSessions', 'allowedIps'));
+        $activeSessions = \DB::table('sessions')->leftJoin('users', 'sessions.user_id', '=', 'users.id')->select('sessions.*', 'users.name')->get();
+
+        return view('laporan.firewall', compact('allowedIps', 'fail2banConfig', 'fail2banIps', 'activeSessions'));
     }
 
-    public function killSession($sessionId)
+    public function storeFail2banIp(Request $request)
     {
-        DB::table('sessions')->where('id', $sessionId)->delete();
-        return back()->with('success', 'Sesi / user berhasil ditendang dari sistem!');
+        $request->validate(['ip_address' => 'required|ip']);
+        $newIp = $request->ip_address;
+
+        // Ambil atau buat konfigurasi default fail2ban di database terpisah
+        $config = \App\Models\Fail2banConfig::firstOrCreate(
+            ['jail_name' => 'laravel-auth'],
+            ['maxretry' => 3, 'bantime' => 3600, 'ignoreip' => '127.0.0.1 118.99.116.4 103.148.197.17']
+        );
+
+        $currentIps = array_filter(explode(' ', trim($config->ignoreip ?? '')));
+
+        if (!in_array($newIp, $currentIps)) {
+            $currentIps[] = $newIp;
+            $config->ignoreip = implode(' ', $currentIps);
+            $config->save();
+        }
+
+        // Sinkronisasi otomatis ke file jail.d & restart fail2ban
+        $this->generateFail2banConfigFromDedicatedDb();
+
+        return back()->with('success', 'IP Address berhasil ditambahkan ke Fail2ban Whitelist!');
     }
 
+    public function destroyFail2banIp(Request $request)
+    {
+        $ipToRemove = $request->input('ip');
+
+        $config = \App\Models\Fail2banConfig::first();
+        if ($config && !empty($config->ignoreip)) {
+            $currentIps = array_filter(explode(' ', trim($config->ignoreip)));
+
+            // Buang IP yang dicabut
+            $updatedIps = array_diff($currentIps, [$ipToRemove]);
+
+            $config->ignoreip = implode(' ', $updatedIps);
+            $config->save();
+        }
+
+        // Sinkronisasi ulang
+        $this->generateFail2banConfigFromDedicatedDb();
+
+        return back()->with('success', 'IP Address berhasil dicabut dari Fail2ban Whitelist!');
+    }
+
+    // Update Pengaturan MaxRetry & BanTime
+    public function updateFail2banConfig(Request $request)
+    {
+        $request->validate([
+            'maxretry' => 'required|integer|min:1',
+            'bantime' => 'required|integer|min:1', // Dalam detik, misal 3600 (1 jam) atau nilai besar untuk permanen
+        ]);
+
+        $config = \App\Models\Fail2banConfig::first();
+        if ($config) {
+            $config->maxretry = $request->maxretry;
+            $config->bantime = $request->bantime;
+            $config->save();
+        }
+
+        // Regenerate file konfigurasi & restart fail2ban
+        $this->generateFail2banConfigFromDedicatedDb();
+
+        return back()->with('success', 'Pengaturan Fail2ban (Max Retry & Ban Time) berhasil diperbarui!');
+    }
+
+    // Fitur Unban IP yang terblokir
+    public function unbanFail2banIp(Request $request)
+    {
+        $request->validate(['ip' => 'required|ip']);
+        $ipToUnban = $request->ip;
+
+        // Eksekusi perintah fail2ban-client untuk unban IP pada jail laravel-auth
+        $output = shell_exec('sudo fail2ban-client set laravel-auth unbanip ' . $ipToUnban);
+
+        return back()->with('success', 'IP Address ' . $ipToUnban . ' berhasil di-unban dari Fail2ban!');
+    }
+    private function generateFail2banConfigFromDedicatedDb()
+    {
+        $config = \App\Models\Fail2banConfig::first();
+        $ignoreIpString = $config ? $config->ignoreip : '127.0.0.1';
+        $maxretry = $config ? $config->maxretry : 3;
+        $bantime = $config ? $config->bantime : 3600;
+
+        $configContent = "[laravel-auth]\n" .
+            "enabled = true\n" .
+            "filter = laravel-auth\n" .
+            "backend = auto\n" .
+            "logpath = /var/www/html/finance/storage/logs/laravel.log\n" .
+            "port = 8005\n" .
+            "action = iptables-multiport[name=laravel-auth, port=\"8005\", protocol=tcp]\n" .
+            "maxretry = {$maxretry}\n" .
+            "findtime = 600\n" .
+            "bantime = {$bantime}\n" .
+            "ignoreip = " . $ignoreIpString . "\n";
+
+        $tempPath = storage_path('app/laravel-auth.local');
+        file_put_contents($tempPath, $configContent);
+
+        shell_exec('sudo cp ' . $tempPath . ' /etc/fail2ban/jail.d/laravel-auth.local');
+        shell_exec('sudo systemctl restart fail2ban');
+    }
     public function storeIp(Request $request)
     {
         $request->validate([
@@ -769,5 +909,11 @@ class LaporanController extends Controller
             'piePemasukan',
             'piePengeluaran'
         ));
+
+    }
+    public function killSession($id)
+    {
+        \DB::table('sessions')->where('id', $id)->delete();
+        return back()->with('success', 'Sesi pengguna berhasil diputus (Force Logout)!');
     }
 }

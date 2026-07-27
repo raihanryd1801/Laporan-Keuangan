@@ -71,6 +71,10 @@ Route::middleware(['auth', 'firewall.ip'])->group(function () {
     Route::get('/laporan/keuangan', [LaporanController::class, 'laporanKeuangan']);
     Route::get('/laporan/statistik', [LaporanController::class, 'statistik']); // <--- TAMBAHKAN INI
     // ...
+    Route::post('/laporan/firewall/fail2ban/store', [LaporanController::class, 'storeFail2banIp']);
+    Route::post('/laporan/firewall/fail2ban/delete', [LaporanController::class, 'destroyFail2banIp']);
+    Route::post('/laporan/firewall/fail2ban/config', [LaporanController::class, 'updateFail2banConfig']);
+    Route::post('/laporan/firewall/fail2ban/unban', [LaporanController::class, 'unbanFail2banIp']);
 });
 
 // Redirect default ke laporan keuangan
