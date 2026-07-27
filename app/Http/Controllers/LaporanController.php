@@ -911,6 +911,36 @@ class LaporanController extends Controller
         ));
 
     }
+    // Tampilkan Halaman Edit Profil Akun yang Sedang Login
+    public function editProfile()
+    {
+        $user = auth()->user();
+        return view('laporan.edit_profile', compact('user'));
+    }
+
+    // Simpan Perubahan Profil (Nama, Email, Password)
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|min:6|confirmed', // Memerlukan input konfirmasi password jika diisi
+        ]);
+
+        $user->name = $request->name;
+        $user->email = $request->email;
+
+        // Jika kolom password diisi, update password baru (di-hash)
+        if ($request->filled('password')) {
+            $user->password = bcrypt($request->password);
+        }
+
+        $user->save();
+
+        return back()->with('success', 'Profil, email, dan password berhasil diperbarui!');
+    }
     public function killSession($id)
     {
         \DB::table('sessions')->where('id', $id)->delete();

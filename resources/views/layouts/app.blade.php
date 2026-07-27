@@ -18,11 +18,9 @@
             color: #333;
             display: flex;
             height: 100vh;
-            /* Biarkan body tidak bisa digulung, tapi biarkan kontainer utama yang memegang kendali */
             overflow: hidden;
         }
 
-        /* Sidebar tetap diam di tempat (fixed) */
         .sidebar {
             width: 260px;
             background-color: #2c3e50;
@@ -32,30 +30,7 @@
             box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
             z-index: 100;
             height: 100vh;
-            /* Penuh satu layar */
-        }
-
-        /* --- MAIN CONTENT AREA (FLEXIBLE FULL SCROLL WEB) --- */
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            /* Di sinilah satu-satunya titik scroll utama web berada */
-            overflow-y: auto;
-            height: 100vh;
-            background-color: #f4f6f9;
-            padding: 30px;
-        }
-
-        .sidebar-brand {
-            padding: 20px;
-            font-size: 18px;
-            font-weight: bold;
-            background-color: #1a252f;
-            text-align: center;
-            letter-spacing: 0.5px;
-            color: #fff;
-            border-bottom: 1px solid #34495e;
+            flex-shrink: 0;
         }
 
         .sidebar-menu {
@@ -110,7 +85,6 @@
             background-color: #d35400;
         }
 
-        /* --- MAIN CONTENT AREA (FULL SCREEN DESKTOP) --- */
         .main-content {
             flex: 1;
             display: flex;
@@ -118,9 +92,9 @@
             overflow-y: auto;
             background-color: #f4f6f9;
             padding: 30px;
+            height: 100vh;
         }
 
-        /* --- GLOBAL UI COMPONENTS --- */
         .header {
             display: flex;
             justify-content: space-between;
@@ -251,26 +225,14 @@
             background: #2980b9;
         }
 
-        .sidebar-brand {
-            padding: 20px;
-            font-size: 18px;
-            font-weight: bold;
-            background-color: #1a252f;
-            text-align: center;
-            letter-spacing: 0.5px;
-            color: #fff;
-            border-bottom: 1px solid #34495e;
-        }
-
-        /* Styling tambahan untuk logo/gambar di bawah teks brand */
-        .sidebar-brand img {
-            display: block;
-            margin: 10px auto 0 auto;
-            /* Memberi jarak dari teks di atasnya */
-            max-width: 80px;
-            /* Sesuaikan ukuran lebar gambar sesuai kebutuhan */
-            height: auto;
-            object-fit: contain;
+        .alert-success {
+            background: #2ecc71;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
     </style>
 </head>
@@ -279,20 +241,77 @@
 
     <!-- SIDEBAR NAVIGATION -->
     <div class="sidebar">
-        <div class="sidebar-brand">
 
-            SKYKOM FINANCE RETAIL
+        <!-- HEADER BRAND & PROFIL USER (dengan tema gelap seirama) -->
+        <div class="sidebar-header" style="
+            padding: 20px 18px 16px 18px;
+            border-bottom: 1px solid #1a252f;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+        ">
+            <h3 style="
+                margin: 0 0 14px 0;
+                font-size: 16px;
+                color: #ecf0f1;
+                font-weight: 700;
+                letter-spacing: 0.3px;
+                text-align: center;
+            ">
+                SKYKOM FINANCE RETAIL
+            </h3>
+
+            @auth
+                <a href="{{ url('/laporan/profile') }}" style="
+                                        display: block;
+                                        text-decoration: none;
+                                        background: rgba(255,255,255,0.08);
+                                        padding: 12px 14px;
+                                        border-radius: 8px;
+                                        border: 1px solid #34495e;
+                                        text-align: center;
+                                        transition: 0.2s;
+                                    " onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+                    onmouseout="this.style.background='rgba(255,255,255,0.08)'">
+                    <div style="
+                                            font-weight: 700;
+                                            color: #ecf0f1;
+                                            font-size: 18px;
+                                            line-height: 1.4;
+                                            word-break: break-word;
+                                        ">
+                        {{ auth()->user()->name }}
+                    </div>
+                    <div style="
+                                            color: #bdc3c7;
+                                            font-size: 18px;
+                                            line-height: 1.4;
+                                            word-break: break-word;
+                                            margin-top: 2px;
+                                        ">
+                        {{ auth()->user()->email }}
+                    </div>
+                    <div style="
+                                            color: #f1c40f;
+                                            font-size: 14px;
+                                            margin-top: 5px;
+                                            font-weight: 600;
+                                            letter-spacing: 0.3px;
+                                        ">
+                        ✎ User Edit
+                    </div>
+                </a>
+            @endauth
         </div>
+
+        <!-- MENU SIDEBAR -->
         <ul class="sidebar-menu">
             <li><a href="{{ url('/laporan/menu-input') }}" class="btn-input">+ Menu Input Transaksi</a></li>
 
             <div class="menu-category" style="margin-top: 15px;">Utama</div>
             <li><a href="{{ url('/laporan/keuangan') }}"
                     class="{{ request()->is('laporan/keuangan') ? 'active' : '' }}">Keuangan Utama</a></li>
-            <a class="nav-link {{ request()->is('laporan/statistik') ? 'active' : '' }}"
-                href="{{ url('/laporan/statistik') }}">
-                Statistik Keuangan
-            </a>
+            <li><a href="{{ url('/laporan/statistik') }}"
+                    class="{{ request()->is('laporan/statistik') ? 'active' : '' }}">Statistik Keuangan</a></li>
 
             <div class="menu-category">Laporan Spesifik</div>
             <li><a href="{{ url('/laporan/pemasangan-baru') }}"
@@ -313,65 +332,65 @@
                     class="{{ request()->is('laporan/master-kategori*') ? 'active' : '' }}">Master Kategori</a></li>
             <li><a href="{{ url('/laporan/teknisi') }}"
                     class="{{ request()->is('laporan/teknisi*') ? 'active' : '' }}">Data Teknisi</a></li>
+
             <li style="list-style:none; margin-top:15px;">
                 <a href="{{ url('/laporan/activity-log') }}" style="
-            width:100%;
-            display:block;
-            background:#27ae60;
-            color:#fff;
-            text-decoration:none;
-            padding:12px 15px;
-            border-radius:6px;
-            font-size:14px;
-            font-weight:600;
-            text-align:center;
-            transition:.3s;">
-                    📜 Log Aktivitas
-                </a>
-            <li style="list-style:none; margin-top:15px;">
-                <a href="{{ url('/laporan/firewall') }}" style="
-            width:100%;
-            display:block;
-            background:#27A6AE;
-            color:#fff;
-            text-decoration:none;
-            padding:12px 15px;
-            border-radius:6px;
-            font-size:14px;
-            font-weight:600;
-            text-align:center;
-            transition:.3s;">
-                    🛡️ Firewall & Sesi
-                </a>
+                    width:100%;
+                    display:block;
+                    background:#27ae60;
+                    color:#fff;
+                    text-decoration:none;
+                    padding:12px 15px;
+                    border-radius:6px;
+                    font-size:14px;
+                    font-weight:600;
+                    text-align:center;
+                    transition:.3s;
+                ">Log Audit</a>
             </li>
 
+            <li style="list-style:none; margin-top:10px;">
+                <a href="{{ url('/laporan/firewall') }}" style="
+                    width:100%;
+                    display:block;
+                    background:#27A6AE;
+                    color:#fff;
+                    text-decoration:none;
+                    padding:12px 15px;
+                    border-radius:6px;
+                    font-size:14px;
+                    font-weight:600;
+                    text-align:center;
+                    transition:.3s;
+                ">Firewall & Sesi</a>
+            </li>
 
-            <form action="{{ route('logout') }}" method="POST" style="margin-top:10px;">
-                @csrf
-                <button type="submit" style="
-            width:100%;
-            display:block;
-            background:#e74c3c;
-            color:#fff;
-            border:none;
-            padding:12px 15px;
-            border-radius:6px;
-            font-size:14px;
-            font-weight:600;
-            cursor:pointer;
-            text-align:center;
-            transition:.3s;">
-                    🚪 Logout
-                </button>
-            </form>
+            <li style="list-style:none; margin-top:10px;">
+                <form action="{{ route('logout') }}" method="POST" style="display:inline; width:100%;">
+                    @csrf
+                    <button type="submit" style="
+                        width:100%;
+                        display:block;
+                        background:#e74c3c;
+                        color:#fff;
+                        border:none;
+                        padding:12px 15px;
+                        border-radius:6px;
+                        font-size:14px;
+                        font-weight:600;
+                        cursor:pointer;
+                        text-align:center;
+                        transition:.3s;
+                    ">Logout</button>
+                </form>
+            </li>
         </ul>
     </div>
 
     <!-- MAIN CONTENT -->
     <div class="main-content">
         @if(session('success'))
-            <div
-                style="background: #2ecc71; color: white; padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div class="alert-success">
                 {{ session('success') }}
             </div>
         @endif
