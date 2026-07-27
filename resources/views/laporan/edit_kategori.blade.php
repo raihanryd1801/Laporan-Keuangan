@@ -1,14 +1,75 @@
 @extends('layouts.app')
 @section('title', 'Edit Kategori')
 @section('content')
-    <div class="header"><h2>Edit Kategori Transaksi</h2></div>
-    <form action="{{ url('/laporan/master-kategori/update/'.$kategori->id) }}" method="POST" style="max-width: 500px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px;">
-        @csrf
-        <div style="margin-bottom: 15px;">
-            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Nama Kategori</label>
-            <input type="text" name="nama_kategori" value="{{ $kategori->nama_kategori }}" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+    <div style="
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+            padding: 20px;
+        ">
+        <div style="
+                width: 100%;
+                max-width: 600px;
+                background: #fff;
+                padding: 35px 40px;
+                border-radius: 12px;
+                box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+            ">
+            <h2 style="
+                    font-size: 22px;
+                    font-weight: 600;
+                    color: #2c3e50;
+                    margin-top: 0;
+                    margin-bottom: 25px;
+                    text-align: center;
+                    border-bottom: 2px solid #ecf0f1;
+                    padding-bottom: 15px;
+                ">
+                Edit Kategori Transaksi
+            </h2>
+
+            <form action="{{ url('/laporan/master-kategori/update/' . $kategori->id) }}" method="POST">
+                @csrf
+                <div style="margin-bottom: 20px;">
+                    <label
+                        style="display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: #34495e;">Nama
+                        Kategori</label>
+                    <input type="text" name="nama_kategori" value="{{ $kategori->nama_kategori }}" required
+                        style="width: 100%; padding: 10px 14px; border: 1px solid #dce1e8; border-radius: 6px; font-size: 15px; transition: border-color 0.2s;">
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 5px;">
+                    <button type="submit" style="
+                            background: #3498db;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            font-weight: 600;
+                            font-size: 15px;
+                            cursor: pointer;
+                            flex: 1;
+                            transition: background 0.2s;
+                        " onmouseover="this.style.background='#2980b9'" onmouseout="this.style.background='#3498db'">
+                        Simpan Perubahan
+                    </button>
+                    <a href="{{ url('/laporan/master-kategori') }}" style="
+                            text-decoration: none;
+                            background: #ecf0f1;
+                            color: #2c3e50;
+                            padding: 12px 24px;
+                            border-radius: 6px;
+                            font-weight: 600;
+                            font-size: 15px;
+                            text-align: center;
+                            flex: 0.5;
+                            transition: background 0.2s;
+                        " onmouseover="this.style.background='#dde1e6'" onmouseout="this.style.background='#ecf0f1'">
+                        Kembali
+                    </a>
+                </div>
+            </form>
         </div>
-        <button type="submit" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer;">Simpan Perubahan</button>
-        <a href="{{ url('/laporan/master-kategori') }}" style="margin-left: 10px; text-decoration: none; color: #7f8c8d;">Kembali</a>
-    </form>
+    </div>
 @endsection
