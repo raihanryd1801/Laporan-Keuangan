@@ -2,8 +2,7 @@
 @section('title', 'Laporan Keuangan Utama & Rekapitulasi')
 
 @section('content')
-    <div class="header"
-        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+    <div class="header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
         <h2>Laporan Keuangan Utama & Rekapitulasi</h2>
 
         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -15,12 +14,9 @@
             </form>
 
             <a href="{{ url('/laporan/export/excel?tanggal_mulai=' . $mulai . '&tanggal_selesai=' . $sampai) }}"
-                style="background: #27ae60; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px;">📥
-                Excel</a>
-            <a href="{{ url('/laporan/export/pdf?tanggal_mulai=' . $mulai . '&tanggal_selesai=' . $sampai) }}"
-                target="_blank"
-                style="background: #e74c3c; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px;">🖨️
-                Cetak PDF</a>
+                style="background: #27ae60; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px;">📥 Excel</a>
+            <a href="{{ url('/laporan/export/pdf?tanggal_mulai=' . $mulai . '&tanggal_selesai=' . $sampai) }}" target="_blank"
+                style="background: #e74c3c; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px;">🖨️ Cetak PDF</a>
         </div>
     </div>
 
@@ -41,11 +37,9 @@
     </div>
 
     <!-- TABEL UTAMA LAPORAN KEUANGAN -->
-    <div
-        style="background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding: 15px; overflow-x: auto; margin-bottom: 30px;">
+    <div style="background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding: 15px; overflow-x: auto; margin-bottom: 30px;">
         <div style="text-align: center; font-weight: bold; margin-bottom: 15px; font-size: 15px;">
-            Periode {{ \Carbon\Carbon::parse($mulai)->format('d F Y') }} -
-            {{ \Carbon\Carbon::parse($sampai)->format('d F Y') }}
+            Periode {{ \Carbon\Carbon::parse($mulai)->format('d F Y') }} - {{ \Carbon\Carbon::parse($sampai)->format('d F Y') }}
         </div>
 
         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
@@ -146,8 +140,7 @@
                 </tr>
 
                 <!-- TOTAL KEUANGAN RETAIL -->
-                <tr
-                    style="background-color: #ffeaa7; font-weight: bold; font-size: 14px; border-top: 2px solid #333; border-bottom: 2px solid #333;">
+                <tr style="background-color: #ffeaa7; font-weight: bold; font-size: 14px; border-top: 2px solid #333; border-bottom: 2px solid #333;">
                     <td colspan="2" style="text-align: center; padding: 10px;">TOTAL KEUANGAN RETAIL</td>
                     <td class="text-right">Rp {{ number_format($totalDebet, 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($totalKredit, 0, ',', '.') }}</td>
@@ -160,8 +153,7 @@
         <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 30px;">
             <thead>
                 <tr style="background-color: #74b9ff; color: #fff;">
-                    <th colspan="3" style="padding: 8px; text-align: center;">Laporan Keuangan Retail - Posisi Saldo Akhir
-                    </th>
+                    <th colspan="3" style="padding: 8px; text-align: center;">Laporan Keuangan Retail - Posisi Saldo Akhir</th>
                 </tr>
                 <tr style="background-color: #f1f2f6; border-bottom: 2px solid #333;">
                     <th style="width: 50px; text-align: center; padding: 6px;">No</th>
@@ -173,21 +165,29 @@
                 <tr>
                     <td style="text-align: center;">1</td>
                     <td>Uang Cash di Operasional</td>
-                    <td class="text-right">-</td>
+                    <!-- Menampilkan Saldo Awal Cash (Sisa operasional lama) -->
+                    <td class="text-right">Rp {{ number_format($saldoAwalCash, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td style="text-align: center;">2</td>
                     <td>Uang Cash dari Retail yang belum disetor ke Bank</td>
-                    <td class="text-right">-</td>
+                    <!-- Menampilkan Uang Cash Belum Disetor (Hasil hitungan mutasi berjalan) -->
+                    <td class="text-right">Rp {{ number_format($uangCashBelumDisetor, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
                     <td style="text-align: center;">3</td>
                     <td>Uang Retail di Rekening</td>
-                    <td class="text-right">Rp {{ number_format($saldoAkhir, 0, ',', '.') }}</td>
+                    <!-- Menampilkan Saldo Bank -->
+                    <td class="text-right">Rp {{ number_format($uangRetailDiRekening, 0, ',', '.') }}</td>
                 </tr>
+                
+                @php
+                    // Pastikan total di bawah sama persis dengan $saldoAkhir global
+                    $totalPosisiKas = $saldoAwalCash + $uangCashBelumDisetor + $uangRetailDiRekening;
+                @endphp
                 <tr style="background-color: #ffeaa7; font-weight: bold;">
                     <td colspan="2" style="text-align: center; padding: 8px;">TOTAL KEUANGAN RETAIL</td>
-                    <td class="text-right" style="color: #d63031;">Rp {{ number_format($saldoAkhir, 0, ',', '.') }}</td>
+                    <td class="text-right" style="color: #d63031;">Rp {{ number_format($totalPosisiKas, 0, ',', '.') }}</td>
                 </tr>
             </tbody>
         </table>

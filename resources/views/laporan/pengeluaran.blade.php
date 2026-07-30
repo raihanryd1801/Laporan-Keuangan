@@ -9,6 +9,47 @@
             <h2>Laporan Pengeluaran Operasional</h2>
         </div>
 
+        <!-- ========================================== -->
+        <!-- WIDGET CARDS SUMMARY PENGELUARAN -->
+        <!-- ========================================== -->
+        <div style="display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap;">
+            
+            <!-- Card 1: Pengeluaran Cash (Oranye) -->
+            <div style="flex: 1; min-width: 250px; background: #fff; border-radius: 8px; border-left: 5px solid #e67e22; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <p style="margin: 0; font-size: 13px; color: #7f8c8d; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Pengeluaran Cash
+                </p>
+                <h3 style="margin: 10px 0 5px 0; font-size: 26px; color: #e67e22;">
+                    Rp {{ number_format($totalCash, 0, ',', '.') }}
+                </h3>
+                <small style="color: #95a5a6; font-size: 11px;">Biaya Operasional dari Laci/Tunai</small>
+            </div>
+
+            <!-- Card 2: Pengeluaran Transfer (Merah Muda / Coral) -->
+            <div style="flex: 1; min-width: 250px; background: #fff; border-radius: 8px; border-left: 5px solid #e74c3c; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <p style="margin: 0; font-size: 13px; color: #7f8c8d; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Pengeluaran Transfer
+                </p>
+                <h3 style="margin: 10px 0 5px 0; font-size: 26px; color: #e74c3c;">
+                    Rp {{ number_format($totalTransfer, 0, ',', '.') }}
+                </h3>
+                <small style="color: #95a5a6; font-size: 11px;">Biaya Operasional via Bank</small>
+            </div>
+
+            <!-- Card 3: Total Pengeluaran (Merah Gelap) -->
+            <div style="flex: 1; min-width: 250px; background: #fff; border-radius: 8px; border-left: 5px solid #c0392b; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                <p style="margin: 0; font-size: 13px; color: #7f8c8d; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Total Seluruh Pengeluaran
+                </p>
+                <h3 style="margin: 10px 0 5px 0; font-size: 26px; color: #c0392b;">
+                    Rp {{ number_format($totalCash + $totalTransfer, 0, ',', '.') }}
+                </h3>
+                <small style="color: #95a5a6; font-size: 11px;">Gabungan Cash + Transfer Bank</small>
+            </div>
+
+        </div>
+        <!-- ========================================== -->
+
         <div class="header" style="flex-direction: column; align-items: flex-start; gap: 15px; margin-bottom: 25px;">
             <h2>Filter Pengeluaran</h2>
 

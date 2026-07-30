@@ -78,6 +78,8 @@ Route::middleware(['auth', 'firewall.ip'])->group(function () {
 
     Route::get('/laporan/profile', [LaporanController::class, 'editProfile']);
     Route::put('/laporan/profile', [LaporanController::class, 'updateProfile']);
+
+    Route::post('/laporan/mutasi-bank/store', [LaporanController::class, 'storeMutasiBank']);
 });
 
 // Redirect default ke laporan keuangan

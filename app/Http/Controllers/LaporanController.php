@@ -23,24 +23,26 @@ class LaporanController extends Controller
      */
     public function laporanKeuangan(Request $request)
     {
-        /// Ambil filter tanggal
+        // Ambil filter tanggal
         $mulai = $request->input('tanggal_mulai', \Carbon\Carbon::now()->startOfMonth()->toDateString());
         $sampai = $request->input('tanggal_selesai', \Carbon\Carbon::now()->endOfMonth()->toDateString());
 
-        // 1. Cek apakah ada input transaksi dengan kategori "Saldo Awal" pada bulan/periode tersebut
+        // =========================================================
+        // 1. Saldo Awal (Cash + Bank Global) -> sama seperti F8 Excel
+        // =========================================================
         $transaksiSaldoAwal = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
             ->whereHas('kategori', function ($q) {
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
             })->sum('debet');
 
-        // 2. Akumulasi saldo dari bulan-bulan sebelumnya (diluar periode filter) + inputan Saldo Awal periode ini
         $transaksiSebelumnya = \App\Models\Transaksi::where('tanggal', '<', $mulai)->get();
         $saldoAwalAkumulasi = $transaksiSebelumnya->sum('debet') - $transaksiSebelumnya->sum('kredit');
 
-        // Total Saldo Awal = Akumulasi lalu + Input Saldo Awal bulan ini
         $saldoAwal = $saldoAwalAkumulasi + $transaksiSaldoAwal;
 
-        // 3. Transaksi Berjalan (Kecuali kategori Saldo Awal agar tidak double hitung di debet)
+        // =========================================================
+        // 2. Transaksi Berjalan (dalam periode filter)
+        // =========================================================
         $transaksi = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
             ->whereDoesntHave('kategori', function ($q) {
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
@@ -50,69 +52,143 @@ class LaporanController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        $totalDebet = $transaksi->sum('debet');
-        $totalKredit = $transaksi->sum('kredit');
-
-        // 4. Saldo Akhir
-        $mutasiBerjalan = $totalDebet - $totalKredit;
-        $saldoAkhir = $saldoAwal + $mutasiBerjalan;
-
-        $areas = \App\Models\Area::all();
-
-        // Pemasukan per Area
-        $pemasukanPerArea = [];
-        foreach ($areas as $area) {
-            $nominal = $transaksi->where('area_id', $area->id)->sum('debet');
-            $pemasukanPerArea[$area->nama_area] = $nominal;
-        }
-
-        // Pemasukan lainnya di luar area (seperti Tukar Cash, dll)
-        $pemasukanLainnya = $transaksi->filter(function ($r) use ($areas) {
-            return $r->debet > 0 &&
-                is_null($r->area_id) &&
-                $r->kategori &&
-                stripos($r->kategori->nama_kategori, 'Kasbon') === false &&
-                $r->kategori->nama_kategori !== 'Pemasangan Baru';
+        // =========================================================
+        // 3. Omzet & Operasional Murni (tanpa Mutasi/Setor Tunai, biar
+        //    perpindahan uang internal antar akun tidak dihitung dobel)
+        //    -> sama seperti F45 Excel (Total Keuangan Retail)
+        //    Kategori "Mutasi" (id 35) dan "Setor Tunai" (id 34) dikecualikan.
+        // =========================================================
+        $transaksiMurni = $transaksi->filter(function ($r) {
+            if (!$r->kategori)
+                return true;
+            $namaKategori = strtolower($r->kategori->nama_kategori);
+            return stripos($namaKategori, 'mutasi') === false && stripos($namaKategori, 'setor') === false;
         });
 
+        $totalDebet = $transaksiMurni->sum('debet');
+        $totalKredit = $transaksiMurni->sum('kredit');
+
+        $mutasiBerjalan = $totalDebet - $totalKredit;
+        $saldoAkhir = $saldoAwal + $mutasiBerjalan;   // <-- ini F45, Total Keuangan Retail
+
+        // =========================================================
+        // 4a. Saldo Cash saat ini (akumulatif dari awal s.d. akhir periode)
+        //     Ini sudah otomatis memperhitungkan Mutasi Keluar (waktu cash
+        //     disetor ke bank, saldo Cash otomatis berkurang lewat transaksi
+        //     kategori "Mutasi" dengan metode_pembayaran_id = 1 di sisi kredit).
+        // =========================================================
+        $saldoCashSaatIni = \App\Models\Transaksi::where('tanggal', '<=', $sampai)
+            ->where('metode_pembayaran_id', 1) // 1 = Cash
+            ->selectRaw('COALESCE(SUM(debet) - SUM(kredit), 0) as saldo')
+            ->value('saldo');
+
+        // =========================================================
+        // 4b. F50 & F51 - Split Cash Operasional vs Belum Disetor
+        //     Aturan dari client (Faros kasih plafon operasional maks 3jt):
+        //
+        //     IF saldoCashSaatIni <= 3.000.000
+        //         uangCashOperasional   = saldoCashSaatIni
+        //         uangCashBelumDisetor  = 0
+        //     ELSE
+        //         uangCashOperasional   = 3.000.000
+        //         uangCashBelumDisetor  = saldoCashSaatIni - 3.000.000
+        // =========================================================
+        $PLAFON_CASH_OPERASIONAL = 3000000;
+
+        if ($saldoCashSaatIni <= $PLAFON_CASH_OPERASIONAL) {
+            $uangCashOperasional = max(0, $saldoCashSaatIni);
+            $uangCashBelumDisetor = 0;
+        } else {
+            $uangCashOperasional = $PLAFON_CASH_OPERASIONAL;
+            $uangCashBelumDisetor = $saldoCashSaatIni - $PLAFON_CASH_OPERASIONAL;
+        }
+
+        // =========================================================
+        // 4c. F52 - Uang Retail di Rekening Faros
+        //
+        //     ⚠️ BELUM BISA DIHITUNG OTOMATIS: transaksi yang duitnya masuk
+        //     ke rekening Faros pakai metode_pembayaran_id yang SAMA dengan
+        //     transfer bank biasa, jadi tidak ada cara membedakannya di DB
+        //     saat ini.
+        //
+        //     SEMENTARA pakai input manual (mirip cara F50 dulu di Excel).
+        //     REKOMENDASI: tambahkan salah satu ini agar bisa otomatis:
+        //       a) kategori baru "Pembayaran Retail ke Rekening Faros", atau
+        //       b) baris baru "Rekening Faros" di tabel metode_pembayarans
+        //     Begitu salah satunya ada, ganti baris di bawah ini dengan query.
+        // =========================================================
+        $uangRekeningFaros = (float) $request->input('uang_rekening_faros', 0);
+
+        // =========================================================
+        // 5. UANG RETAIL DI REKENING PT -> sama persis F53 Excel
+        //    Rumus: F45 - F50 - F51 - F52
+        // =========================================================
+        $uangRetailDiRekening = $saldoAkhir - $uangCashOperasional - $uangCashBelumDisetor - $uangRekeningFaros;
+
+        // Alias biar view lama yang masih pakai nama variabel lama tidak error
+        // (opsional — hapus kalau blade sudah diupdate pakai nama variabel baru)
+        $saldoAwalCash = $uangCashOperasional;
+
+        // --- Data Pelengkap untuk View (tidak berubah dari versi lama) ---
+        $areas = \App\Models\Area::all();
+        $pemasukanPerArea = [];
+        foreach ($areas as $area) {
+            $pemasukanPerArea[$area->nama_area] = $transaksi->where('area_id', $area->id)->sum('debet');
+        }
+
+        $pemasukanLainnya = $transaksi->filter(function ($r) use ($areas) {
+            return $r->debet > 0 && is_null($r->area_id) && $r->kategori
+                && stripos($r->kategori->nama_kategori, 'Kasbon') === false
+                && $r->kategori->nama_kategori !== 'Pemasangan Baru'
+                && stripos($r->kategori->nama_kategori, 'Setor') === false
+                && stripos($r->kategori->nama_kategori, 'Mutasi') === false;
+        });
         foreach ($pemasukanLainnya as $trx) {
             $namaKat = $trx->kategori->nama_kategori;
             $pemasukanPerArea[$namaKat] = ($pemasukanPerArea[$namaKat] ?? 0) + $trx->debet;
         }
 
-        $kasbonMasuk = $transaksi->filter(function ($r) {
-            return $r->debet > 0 && $r->kategori && stripos($r->kategori->nama_kategori, 'Kasbon') !== false;
-        })->sum('debet');
+        $kasbonMasuk = $transaksi->filter(fn($r) => $r->debet > 0 && $r->kategori && stripos($r->kategori->nama_kategori, 'Kasbon') !== false)->sum('debet');
 
-        // Pengeluaran per Kategori
         $kategoris = \App\Models\Kategori::all();
         $pengeluaranPerKategori = [];
+        $totalPengeluaranOperasional = 0;
         foreach ($kategoris as $kat) {
             $nominalKredit = $transaksi->where('kategori_id', $kat->id)->sum('kredit');
-            if ($nominalKredit > 0 && stripos($kat->nama_kategori, 'Kasbon') === false) {
+            if (
+                $nominalKredit > 0
+                && stripos($kat->nama_kategori, 'Kasbon') === false
+                && stripos($kat->nama_kategori, 'Setor') === false
+                && stripos($kat->nama_kategori, 'Mutasi') === false
+            ) {
                 $pengeluaranPerKategori[$kat->nama_kategori] = $nominalKredit;
+                $totalPengeluaranOperasional += $nominalKredit;
             }
         }
-
-        $kasbonKeluar = $transaksi->filter(function ($r) {
-            return $r->kredit > 0 && $r->kategori && stripos($r->kategori->nama_kategori, 'Kasbon') !== false;
-        })->sum('kredit');
+        $kasbonKeluar = $transaksi->filter(fn($r) => $r->kredit > 0 && $r->kategori && stripos($r->kategori->nama_kategori, 'Kasbon') !== false)->sum('kredit');
+        $sisaKasbonTeknisi = $kasbonKeluar - $kasbonMasuk;
 
         return view('laporan.keuangan', compact(
             'saldoAwal',
             'pemasukanPerArea',
             'kasbonMasuk',
             'pengeluaranPerKategori',
+            'totalPengeluaranOperasional',
             'kasbonKeluar',
             'totalDebet',
             'totalKredit',
             'saldoAkhir',
             'mulai',
             'sampai',
-            'areas'
+            'areas',
+            'saldoAwalCash',
+            'saldoCashSaatIni',
+            'uangCashOperasional',
+            'uangCashBelumDisetor',
+            'uangRekeningFaros',
+            'uangRetailDiRekening'
         ));
     }
-
     /**
      * 2. Laporan Pemasangan Baru
      */
@@ -139,29 +215,82 @@ class LaporanController extends Controller
     /**
      * 3. Laporan Pemasukan (Cash & Transfer) + Filter Tanggal
      */
+    /**
+     * 3. Laporan Pemasukan (Cash & Transfer) + Filter Tanggal
+     */
     public function pemasukan(Request $request)
     {
         $mulai = $request->input('tanggal_mulai', Carbon::now()->startOfMonth()->format('Y-m-d'));
         $sampai = $request->input('tanggal_selesai', Carbon::now()->endOfMonth()->format('Y-m-d'));
 
+        // 1. Pemasukan Cash Murni (Tanpa Mutasi) -> termasuk baris "Saldo Awal"
         $pemasukanCash = Transaksi::with(['kategori', 'metodePembayaran', 'area', 'user'])
             ->where('debet', '>', 0)
             ->whereBetween('tanggal', [$mulai, $sampai])
             ->whereHas('metodePembayaran', fn($q) => $q->where('nama_metode', 'Cash'))
+            ->whereDoesntHave('kategori', function ($q) {
+                $q->where('nama_kategori', 'like', '%Mutasi%')
+                    ->orWhere('nama_kategori', 'like', '%Setor%');
+            })
             ->orderBy('tanggal', 'asc')
             ->get();
 
+        // 2. Pemasukan Transfer Murni (Tanpa Mutasi) -> termasuk baris "Saldo Awal"
         $pemasukanTransfer = Transaksi::with(['kategori', 'metodePembayaran', 'area', 'user'])
             ->where('debet', '>', 0)
             ->whereBetween('tanggal', [$mulai, $sampai])
             ->whereHas('metodePembayaran', fn($q) => $q->where('nama_metode', 'Transfer Bank'))
+            ->whereDoesntHave('kategori', function ($q) {
+                $q->where('nama_kategori', 'like', '%Mutasi%')
+                    ->orWhere('nama_kategori', 'like', '%Setor%');
+            })
+            ->orderBy('tanggal', 'asc')
+            ->get();
+
+        // 3. KHUSUS RIWAYAT MUTASI / SETOR TUNAI (Agar bisa di-edit/delete Mbak Rahma)
+        $riwayatMutasi = Transaksi::with(['kategori', 'metodePembayaran', 'area', 'user'])
+            ->where('debet', '>', 0)
+            ->whereBetween('tanggal', [$mulai, $sampai])
+            ->whereHas('kategori', function ($q) {
+                $q->where('nama_kategori', 'like', '%Mutasi%')
+                    ->orWhere('nama_kategori', 'like', '%Setor%');
+            })
             ->orderBy('tanggal', 'asc')
             ->get();
 
         $totalCash = $pemasukanCash->sum('debet');
         $totalTransfer = $pemasukanTransfer->sum('debet');
+        $totalMutasi = $riwayatMutasi->sum('debet');
 
-        return view('laporan.pemasukan', compact('pemasukanCash', 'pemasukanTransfer', 'totalCash', 'totalTransfer', 'mulai', 'sampai'));
+        // =========================================================
+        // [BARU] Total Pemasukan "Berjalan" -> Total dikurangi Saldo Awal
+        // periode ini, biar kelihatan omzet murni bulan berjalan tanpa
+        // ikut kebawa saldo carry-over dari bulan sebelumnya.
+        // =========================================================
+        $saldoAwalCashPeriode = $pemasukanCash
+            ->filter(fn($r) => $r->kategori && stripos($r->kategori->nama_kategori, 'Saldo Awal') !== false)
+            ->sum('debet');
+
+        $saldoAwalTransferPeriode = $pemasukanTransfer
+            ->filter(fn($r) => $r->kategori && stripos($r->kategori->nama_kategori, 'Saldo Awal') !== false)
+            ->sum('debet');
+
+        $totalCashBerjalan = $totalCash - $saldoAwalCashPeriode;
+        $totalTransferBerjalan = $totalTransfer - $saldoAwalTransferPeriode;
+
+        // Jangan lupa passing variabel riwayatMutasi ke View
+        return view('laporan.pemasukan', compact(
+            'pemasukanCash',
+            'pemasukanTransfer',
+            'riwayatMutasi',
+            'totalCash',
+            'totalTransfer',
+            'totalMutasi',
+            'totalCashBerjalan',
+            'totalTransferBerjalan',
+            'mulai',
+            'sampai'
+        ));
     }
 
     /**
@@ -175,16 +304,24 @@ class LaporanController extends Controller
         $pengeluaranCash = Transaksi::with(['kategori', 'metodePembayaran', 'area', 'user'])
             ->where('kredit', '>', 0)
             ->whereBetween('tanggal', [$mulai, $sampai])
-            ->whereHas('kategori', fn($q) => $q->where('nama_kategori', '!=', 'Kasbon'))
             ->whereHas('metodePembayaran', fn($q) => $q->where('nama_metode', 'Cash'))
+            ->whereDoesntHave('kategori', function ($q) {
+                $q->where('nama_kategori', 'like', '%Kasbon%')
+                    ->orWhere('nama_kategori', 'like', '%Mutasi%')
+                    ->orWhere('nama_kategori', 'like', '%Setor%');
+            })
             ->orderBy('tanggal', 'asc')
             ->get();
 
         $pengeluaranTransfer = Transaksi::with(['kategori', 'metodePembayaran', 'area', 'user'])
             ->where('kredit', '>', 0)
             ->whereBetween('tanggal', [$mulai, $sampai])
-            ->whereHas('kategori', fn($q) => $q->where('nama_kategori', '!=', 'Kasbon'))
             ->whereHas('metodePembayaran', fn($q) => $q->where('nama_metode', 'Transfer Bank'))
+            ->whereDoesntHave('kategori', function ($q) {
+                $q->where('nama_kategori', 'like', '%Kasbon%')
+                    ->orWhere('nama_kategori', 'like', '%Mutasi%')
+                    ->orWhere('nama_kategori', 'like', '%Setor%');
+            })
             ->orderBy('tanggal', 'asc')
             ->get();
 
@@ -203,7 +340,8 @@ class LaporanController extends Controller
         $sampai = $request->input('tanggal_selesai', \Carbon\Carbon::now()->endOfMonth()->format('Y-m-d'));
         $teknisiId = $request->input('teknisi_id');
 
-        $userIdsKasbon = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
+        // Daftar teknisi yang PERNAH punya transaksi kasbon s.d. tanggal filter
+        $userIdsKasbon = \App\Models\Transaksi::where('tanggal', '<=', $sampai)
             ->whereHas('kategori', fn($q) => $q->where('nama_kategori', 'like', '%Kasbon%'))
             ->whereNotNull('user_id')
             ->pluck('user_id')
@@ -211,8 +349,11 @@ class LaporanController extends Controller
 
         $teknisis = \App\Models\User::whereIn('id', $userIdsKasbon)->get();
 
+        // [DIPERBAIKI] Akumulatif dari awal waktu s.d. tanggal "sampai",
+        // supaya pembayaran yang menutup kasbon bulan-bulan sebelumnya
+        // tetap match dengan pinjaman aslinya.
         $kasbon = \App\Models\Transaksi::with(['user', 'area', 'metodePembayaran'])
-            ->whereBetween('tanggal', [$mulai, $sampai])
+            ->where('tanggal', '<=', $sampai)
             ->whereHas('kategori', fn($q) => $q->where('nama_kategori', 'like', '%Kasbon%'))
             ->when($teknisiId, function ($query) use ($teknisiId) {
                 return $query->where('user_id', $teknisiId);
@@ -220,13 +361,29 @@ class LaporanController extends Controller
             ->orderBy('tanggal', 'asc')
             ->get();
 
-        $totalKasbon = $kasbon->sum(function ($row) {
-            return $row->kredit > 0 ? $row->kredit : $row->debet;
-        });
+        // Total sisa hutang kasbon SEMUA teknisi per tanggal "sampai"
+        $totalKasbon = $kasbon->sum('kredit') - $kasbon->sum('debet');
 
-        return view('laporan.kasbon', compact('kasbon', 'totalKasbon', 'mulai', 'sampai', 'teknisis', 'teknisiId'));
+        // [BARU] Rincian sisa hutang PER teknisi, biar kelihatan siapa yang
+        // masih punya hutang dan siapa yang sudah lunas / bayar lebih.
+        $sisaPerTeknisi = $kasbon->groupBy('user_id')->map(function ($rows) {
+            $user = $rows->first()->user;
+            return [
+                'nama' => $user ? $user->name : 'Tanpa Nama',
+                'sisa' => $rows->sum('kredit') - $rows->sum('debet'),
+            ];
+        })->values();
+
+        return view('laporan.kasbon', compact(
+            'kasbon',
+            'totalKasbon',
+            'sisaPerTeknisi',
+            'mulai',
+            'sampai',
+            'teknisis',
+            'teknisiId'
+        ));
     }
-
     public function create(Request $request)
     {
         $kategoris = Kategori::all();
@@ -243,17 +400,65 @@ class LaporanController extends Controller
     {
         $request->validate([
             'tanggal' => 'required|date',
-            'jenis_transaksi' => 'required|in:debet,kredit',
-            'kategori_id' => 'required',
+            'jenis_transaksi' => 'required|in:debet,kredit,mutasi',
+            // Kategori wajib diisi, KECUALI jika jenis transaksinya adalah mutasi
+            'kategori_id' => 'required_unless:jenis_transaksi,mutasi',
             'metode_pembayaran_id' => 'required',
             'keterangan' => 'required|string|max:255',
             'nominal' => 'required|numeric|min:0',
         ]);
+        $tglFormat = \Carbon\Carbon::parse($request->tanggal)->format('d/m/Y');
 
+        // ====================================================================
+        // 2. LOGIKA KHUSUS JIKA TRANSAKSI ADALAH MUTASI / SETOR TUNAI
+        // ====================================================================
+        if ($request->jenis_transaksi === 'mutasi') {
+
+            $this->recordLog('Mutasi Bank', 'Setor tunai ke bank tgl ' . $tglFormat . ' senilai Rp ' . number_format($request->nominal, 0, ',', '.') . ' (' . $request->keterangan . ')');
+
+            // [DIPERBAIKI] Pastikan kategori Mutasi digunakan agar tidak tercampur laporan laba-rugi
+            $kategoriMutasi = \App\Models\Kategori::firstOrCreate(['nama_kategori' => 'Mutasi']);
+            $idKatMutasi = $kategoriMutasi->id;
+
+            /*
+               Aksi A: Kas Keluar (Mengurangi Cash Fisik)
+               Catatan: Asumsi angka '1' adalah ID untuk metode "Cash/Tunai".
+            */
+            Transaksi::create([
+                'tanggal' => $request->tanggal,
+                'kategori_id' => $idKatMutasi, // Menggunakan kategori khusus mutasi
+                'metode_pembayaran_id' => 1, // <-- Pastikan ini ID untuk "Cash"
+                'area_id' => null,
+                'user_id' => auth()->id(),
+                'keterangan' => '[MUTASI KELUAR] ' . $request->keterangan,
+                'debet' => 0,
+                'kredit' => $request->nominal, // Masuk kredit = kas keluar (berkurang)
+            ]);
+
+            /*
+               Aksi B: Masuk ke Bank (Menambah Saldo Bank PT)
+               metode_pembayaran_id diambil dari bank tujuan yang dipilih di form.
+            */
+            Transaksi::create([
+                'tanggal' => $request->tanggal,
+                'kategori_id' => $idKatMutasi, // Menggunakan kategori khusus mutasi
+                'metode_pembayaran_id' => $request->metode_pembayaran_id, // ID Bank Tujuan
+                'area_id' => null,
+                'user_id' => auth()->id(),
+                'keterangan' => '[MUTASI MASUK] ' . $request->keterangan,
+                'debet' => $request->nominal, // Masuk debet = bank bertambah
+                'kredit' => 0,
+            ]);
+
+            return redirect('/laporan/keuangan')->with('success', 'Berhasil! Setor tunai tercatat, Cash dipotong & Saldo Bank bertambah.');
+        }
+
+        // ====================================================================
+        // 3. LOGIKA NORMAL (PEMASUKAN & PENGELUARAN BIASA)
+        // ====================================================================
         $debet = $request->jenis_transaksi === 'debet' ? $request->nominal : 0;
         $kredit = $request->jenis_transaksi === 'kredit' ? $request->nominal : 0;
 
-        $tglFormat = \Carbon\Carbon::parse($request->tanggal)->format('d/m/Y');
         $this->recordLog('Tambah Transaksi', 'Menambahkan transaksi tgl ' . $tglFormat . ' senilai Rp ' . number_format($request->nominal, 0, ',', '.') . ' (' . $request->keterangan . ')');
 
         Transaksi::create([
@@ -361,12 +566,14 @@ class LaporanController extends Controller
         $area = Area::findOrFail($id);
         return view('laporan.edit_area', compact('area'));
     }
+
     public function updateArea(Request $request, $id)
     {
         $request->validate(['nama_area' => 'required|string|max:255']);
         Area::where('id', $id)->update(['nama_area' => $request->nama_area]);
         return redirect('/laporan/master-area')->with('success', 'Area berhasil diperbarui!');
     }
+
     public function destroyArea($id)
     {
         Area::destroy($id);
@@ -378,12 +585,14 @@ class LaporanController extends Controller
         $user = User::findOrFail($id);
         return view('laporan.edit_teknisi', compact('user'));
     }
+
     public function updateTeknisi(Request $request, $id)
     {
         $request->validate(['name' => 'required|string|max:255']);
         User::where('id', $id)->update(['name' => $request->name]);
         return redirect('/laporan/teknisi')->with('success', 'Data teknisi berhasil diperbarui!');
     }
+
     public function destroyTeknisi($id)
     {
         User::destroy($id);
@@ -395,12 +604,14 @@ class LaporanController extends Controller
         $kategori = Kategori::findOrFail($id);
         return view('laporan.edit_kategori', compact('kategori'));
     }
+
     public function updateKategori(Request $request, $id)
     {
         $request->validate(['nama_kategori' => 'required|string|max:255']);
         Kategori::where('id', $id)->update(['nama_kategori' => $request->nama_kategori]);
         return redirect('/laporan/master-kategori')->with('success', 'Kategori berhasil diperbarui!');
     }
+
     public function destroyKategori($id)
     {
         Kategori::destroy($id);
@@ -450,13 +661,39 @@ class LaporanController extends Controller
     public function destroyTransaksi($id)
     {
         $trx = Transaksi::find($id);
-        $deskripsi = $trx ? 'Menghapus transaksi: ' . $trx->keterangan . ' (Rp ' . number_format($trx->debet > 0 ? $trx->debet : $trx->kredit, 0, ',', '.') . ')' : 'Menghapus transaksi ID: ' . $id;
 
-        $this->recordLog('Hapus Transaksi', $deskripsi);
+        if (!$trx) {
+            return back()->with('error', 'Data transaksi tidak ditemukan.');
+        }
 
-        Transaksi::destroy($id);
+        // Cek apakah transaksi ini adalah bagian dari Mutasi (memiliki keterangan [MUTASI MASUK] atau [MUTASI KELUAR])
+        if (str_contains($trx->keterangan, '[MUTASI MASUK]') || str_contains($trx->keterangan, '[MUTASI KELUAR]')) {
 
-        return back()->with('success', 'Data transaksi berhasil dihapus!');
+            // Ambil nominal yang aktif (bisa dari debet atau kredit)
+            $nominalTarget = $trx->debet > 0 ? $trx->debet : $trx->kredit;
+
+            // Bersihkan teks tag mutasi untuk mencari pasangannya berdasarkan keterangan asli & nominal yang sama
+            $keteranganAsli = str_replace(['[MUTASI MASUK] ', '[MUTASI KELUAR] '], '', $trx->keterangan);
+
+            // Hapus SEMUA transaksi lain yang punya tanggal, nominal, dan keterangan dasar yang sama persis
+            Transaksi::where('tanggal', $trx->tanggal)
+                ->where(function ($query) use ($nominalTarget) {
+                    $query->where('debet', $nominalTarget)->orWhere('kredit', $nominalTarget);
+                })
+                ->where('keterangan', 'like', '%' . $keteranganAsli . '%')
+                ->delete();
+
+            $deskripsiLog = 'Menghapus Mutasi Setor Tunai: ' . $keteranganAsli;
+        } else {
+            // Hapus transaksi normal biasa (Pemasukan / Pengeluaran tunggal)
+            $nominalNormal = $trx->debet > 0 ? $trx->debet : $trx->kredit;
+            $deskripsiLog = 'Menghapus transaksi: ' . $trx->keterangan . ' (Rp ' . number_format($nominalNormal, 0, ',', '.') . ')';
+            $trx->delete();
+        }
+
+        $this->recordLog('Hapus Transaksi', $deskripsiLog);
+
+        return back()->with('success', 'Data transaksi berhasil dihapus bersih!');
     }
 
     public function exportExcel(Request $request)
@@ -512,13 +749,17 @@ class LaporanController extends Controller
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
             })
             ->with(['kategori', 'metodePembayaran', 'area', 'user'])
+            ->orderBy('tanggal', 'asc')
             ->get();
 
-        $totalDebet = $transaksi->sum('debet');
-        $totalKredit = $transaksi->sum('kredit');
+        $transaksiMurni = $transaksi->filter(function ($r) {
+            return !$r->kategori || stripos($r->kategori->nama_kategori, 'Mutasi') === false;
+        });
+
+        $totalDebet = $transaksiMurni->sum('debet');
+        $totalKredit = $transaksiMurni->sum('kredit');
         $mutasiBerjalan = $totalDebet - $totalKredit;
         $saldoAkhir = $saldoAwal + $mutasiBerjalan;
-
         $areas = \App\Models\Area::all();
 
         $pemasukanPerArea = [];
@@ -527,12 +768,14 @@ class LaporanController extends Controller
             $pemasukanPerArea[$area->nama_area] = $nominal;
         }
 
-        $pemasukanLainnya = $transaksi->filter(function ($r) {
+        $pemasukanLainnya = $transaksi->filter(function ($r) use ($areas) {
             return $r->debet > 0 &&
                 is_null($r->area_id) &&
                 $r->kategori &&
                 stripos($r->kategori->nama_kategori, 'Kasbon') === false &&
-                $r->kategori->nama_kategori !== 'Pemasangan Baru';
+                $r->kategori->nama_kategori !== 'Pemasangan Baru' &&
+                stripos($r->kategori->nama_kategori, 'Setor') === false &&
+                stripos($r->kategori->nama_kategori, 'Mutasi') === false;
         });
 
         foreach ($pemasukanLainnya as $trx) {
@@ -546,15 +789,19 @@ class LaporanController extends Controller
 
         $kategoris = \App\Models\Kategori::all();
         $pengeluaranPerKategori = [];
+        $totalPengeluaranOperasional = 0;
+
         foreach ($kategoris as $kat) {
             $nominalKredit = $transaksi->where('kategori_id', $kat->id)->sum('kredit');
+
             if (
                 $nominalKredit > 0 &&
                 stripos($kat->nama_kategori, 'Kasbon') === false &&
-                stripos($kat->nama_kategori, 'Saldo Awal') === false &&
-                stripos($kat->nama_kategori, 'Tukar Cash') === false
+                stripos($kat->nama_kategori, 'Setor') === false &&
+                stripos($kat->nama_kategori, 'Mutasi') === false
             ) {
                 $pengeluaranPerKategori[$kat->nama_kategori] = $nominalKredit;
+                $totalPengeluaranOperasional += $nominalKredit;
             }
         }
 
@@ -562,18 +809,64 @@ class LaporanController extends Controller
             return $r->kredit > 0 && $r->kategori && stripos($r->kategori->nama_kategori, 'Kasbon') !== false;
         })->sum('kredit');
 
+        $isCash = function ($r) {
+            if (!$r->metodePembayaran)
+                return false;
+            $nama = strtolower($r->metodePembayaran->nama_metode);
+            return $r->metode_pembayaran_id == 1 || str_contains($nama, 'cash') || str_contains($nama, 'tunai') || str_contains($nama, 'kas');
+        };
+
+        $inputSaldoAwalCash = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
+            ->whereHas('kategori', fn($q) => $q->where('nama_kategori', 'like', '%Saldo Awal%'))
+            ->where(function ($q) {
+                $q->where('metode_pembayaran_id', 1)
+                    ->orWhereHas('metodePembayaran', fn($m) => $m->where('nama_metode', 'like', '%cash%')->orWhere('nama_metode', 'like', '%tunai%')->orWhere('nama_metode', 'like', '%kas%'));
+            })->sum('debet');
+
+        $akumulasiCashSebelumnya = $transaksiSebelumnya->filter(fn($r) => $isCash($r))->sum(fn($r) => $r->debet - $r->kredit);
+        $modalAwalCash = $akumulasiCashSebelumnya + $inputSaldoAwalCash;
+
+        $totalPemasukanCash = $transaksi->filter(fn($r) => $r->debet > 0 && $isCash($r))->sum('debet');
+
+        $totalMutasiCashKeBank = $transaksi->filter(function ($r) use ($isCash) {
+            return $r->kredit > 0 && $isCash($r) && $r->kategori && (stripos($r->kategori->nama_kategori, 'Mutasi') !== false || stripos($r->kategori->nama_kategori, 'Setor') !== false);
+        })->sum('kredit');
+
+        $totalKotorCash = $modalAwalCash + $totalPemasukanCash;
+        $sisaSetelahSetor = $totalKotorCash - $totalMutasiCashKeBank;
+        $saldoAwalCash = 3000000;
+        $uangCashBelumDisetor = $sisaSetelahSetor - 3000000;
+        $sisaUangCashRahma = $uangCashBelumDisetor;
+
+        $inputSaldoAwalRekening = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
+            ->whereHas('kategori', fn($q) => $q->where('nama_kategori', 'like', '%Saldo Awal%'))
+            ->where(function ($q) {
+                $q->where('metode_pembayaran_id', '!=', 1)
+                    ->whereHas('metodePembayaran', fn($m) => $m->where('nama_metode', 'not like', '%cash%')->where('nama_metode', 'not like', '%tunai%')->where('nama_metode', 'not like', '%kas%'));
+            })->sum('debet');
+
+        $akumulasiRekeningSebelumnya = $transaksiSebelumnya->filter(fn($r) => !$isCash($r))->sum(fn($r) => $r->debet - $r->kredit);
+        $saldoAwalRekening = $akumulasiRekeningSebelumnya + $inputSaldoAwalRekening;
+        $mutasiBankBerjalan = $transaksi->filter(fn($r) => !$isCash($r))->sum(fn($r) => $r->debet - $r->kredit);
+        $uangRetailDiRekening = $saldoAwalRekening + $mutasiBankBerjalan;
+
         return view('laporan.export_pdf', compact(
             'saldoAwal',
             'pemasukanPerArea',
             'kasbonMasuk',
             'pengeluaranPerKategori',
+            'totalPengeluaranOperasional',
             'kasbonKeluar',
             'totalDebet',
             'totalKredit',
             'saldoAkhir',
             'mulai',
             'sampai',
-            'areas'
+            'areas',
+            'sisaUangCashRahma',
+            'saldoAwalCash',
+            'uangCashBelumDisetor',
+            'uangRetailDiRekening'
         ));
     }
 
@@ -776,6 +1069,7 @@ class LaporanController extends Controller
 
         return back()->with('success', 'IP Address ' . $ipToUnban . ' berhasil di-unban dari Fail2ban!');
     }
+
     private function generateFail2banConfigFromDedicatedDb()
     {
         $config = \App\Models\Fail2banConfig::first();
@@ -801,6 +1095,7 @@ class LaporanController extends Controller
         shell_exec('sudo cp ' . $tempPath . ' /etc/fail2ban/jail.d/laravel-auth.local');
         shell_exec('sudo systemctl restart fail2ban');
     }
+
     public function storeIp(Request $request)
     {
         $request->validate([
@@ -816,13 +1111,13 @@ class LaporanController extends Controller
 
         return back()->with('success', 'IP Address berhasil disimpan ke dalam whitelist!');
     }
+
     public function destroyIp($id)
     {
         FirewallIp::destroy($id);
         return back()->with('success', 'IP Address berhasil dicabut dari whitelist!');
     }
-    // --- HALAMAN STATISTIK KEUANGAN ---
-    // --- HALAMAN STATISTIK KEUANGAN ---
+
     // --- HALAMAN STATISTIK KEUANGAN ---
     public function statistik(Request $request)
     {
@@ -833,7 +1128,9 @@ class LaporanController extends Controller
         $query = \App\Models\Transaksi::with('kategori')
             ->whereYear('tanggal', $tahun)
             ->whereDoesntHave('kategori', function ($q) {
-                $q->where('nama_kategori', 'like', '%Saldo Awal%');
+                $q->where('nama_kategori', 'like', '%Saldo Awal%')
+                    ->orWhere('nama_kategori', 'like', '%Mutasi%')
+                    ->orWhere('nama_kategori', 'like', '%Setor%');
             });
 
         // Jika filter bulan spesifik dipilih
@@ -892,7 +1189,7 @@ class LaporanController extends Controller
             }
         }
 
-        // Hitung total 
+        // Hitung total
         $totalPemasukan = array_sum($pemasukanData);
         $totalPengeluaran = array_sum($pengeluaranData);
         $labaRugi = $totalPemasukan - $totalPengeluaran;
@@ -909,8 +1206,8 @@ class LaporanController extends Controller
             'piePemasukan',
             'piePengeluaran'
         ));
-
     }
+
     // Tampilkan Halaman Edit Profil Akun yang Sedang Login
     public function editProfile()
     {
@@ -941,6 +1238,7 @@ class LaporanController extends Controller
 
         return back()->with('success', 'Profil, email, dan password berhasil diperbarui!');
     }
+
     public function killSession($id)
     {
         \DB::table('sessions')->where('id', $id)->delete();

@@ -52,25 +52,76 @@
             </form>
         </div>
 
+        <!-- Ringkasan Sisa Kasbon per Teknisi -->
+        @if(isset($sisaPerTeknisi) && count($sisaPerTeknisi) > 0)
+            <h3 style="margin-top: 10px; margin-bottom: 10px; color: #d35400; font-size: 16px;">▶ Ringkasan Sisa Kasbon per
+                Teknisi</h3>
+            <div
+                style="background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding: 15px; overflow-x: auto; margin-bottom: 25px;">
+                <table style="width: 100%; min-width: 600px; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background-color: #f1f2f6; border-top: 2px solid #333; border-bottom: 2px solid #333;">
+                            <th style="padding: 10px;">Teknisi</th>
+                            <th class="text-right" style="width: 180px; padding: 10px;">Sisa Kasbon</th>
+                            <th style="width: 140px; text-align: center; padding: 10px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($sisaPerTeknisi as $t)
+                            <tr style="border-bottom: 1px solid #f1f1f1;">
+                                <td style="padding: 10px; font-weight: 600; color: #2c3e50;">{{ $t['nama'] }}</td>
+                                <td class="text-right"
+                                    style="padding: 10px; font-weight: 600; color: {{ $t['sisa'] > 0 ? '#e74c3c' : ($t['sisa'] < 0 ? '#2980b9' : '#27ae60') }};">
+                                    Rp {{ number_format(abs($t['sisa']), 0, ',', '.') }}
+                                </td>
+                                <td style="text-align: center; padding: 10px;">
+                                    @if($t['sisa'] > 0)
+                                        <span
+                                            style="background: #fdecea; color: #e74c3c; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">Masih
+                                            Hutang</span>
+                                    @elseif($t['sisa'] < 0)
+                                        <span
+                                            style="background: #eaf2fb; color: #2980b9; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">Kelebihan
+                                            Bayar</span>
+                                    @else
+                                        <span
+                                            style="background: #eafaf1; color: #27ae60; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">Lunas</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
         <!-- Tabel Kasbon -->
         <h3 style="margin-top: 10px; margin-bottom: 10px; color: #d35400; font-size: 16px;">▶ Rincian Kasbon</h3>
         <div
             style="background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); padding: 15px; overflow-x: auto; margin-bottom: 30px;">
-            <table style="width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 13px;">
+            <table style="width: 100%; min-width: 1200px; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background-color: #f1f2f6; border-top: 2px solid #333; border-bottom: 2px solid #333;">
-                        <th style="width: 50px; text-align: center; padding: 10px;">No</th>
-                        <th style="width: 100px; padding: 10px;">Tanggal</th>
+                        <th style="width: 40px; text-align: center; padding: 10px;">No</th>
+                        <th style="width: 95px; padding: 10px;">Tanggal</th>
                         <th style="padding: 10px;">Teknisi</th>
                         <th style="padding: 10px;">Metode</th>
                         <th style="padding: 10px;">Area</th>
                         <th style="padding: 10px;">Keterangan</th>
-                        <th class="text-right" style="width: 130px; padding: 10px;">Nominal Kasbon</th>
+                        <th class="text-right" style="width: 130px; padding: 10px;">Kasbon Keluar</th>
+                        <th class="text-right" style="width: 130px; padding: 10px;">Pembayaran</th>
+                        <th class="text-right" style="width: 130px; padding: 10px;">Saldo Berjalan</th>
                         <th style="text-align: center; width: 140px; padding: 10px;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
+                    @php $saldoBerjalan = []; @endphp
                     @forelse($kasbon as $index => $row)
+                        @php
+                            $uid = $row->user_id;
+                            $saldoBerjalan[$uid] = ($saldoBerjalan[$uid] ?? 0) + $row->kredit - $row->debet;
+                            $saldo = $saldoBerjalan[$uid];
+                        @endphp
                         <tr style="border-bottom: 1px solid #f1f1f1;">
                             <td style="text-align: center; padding: 10px;">{{ $index + 1 }}</td>
                             <td style="padding: 10px;">{{ \Carbon\Carbon::parse($row->tanggal)->format('d/m/Y') }}</td>
@@ -80,7 +131,14 @@
                             <td style="padding: 10px;">{{ optional($row->area)->nama_area ?? 'Pusat' }}</td>
                             <td style="padding: 10px;">{{ $row->keterangan }}</td>
                             <td class="text-right" style="padding: 10px; color: #e74c3c; font-weight: 600;">
-                                Rp {{ number_format($row->kredit > 0 ? $row->kredit : $row->debet, 0, ',', '.') }}
+                                {{ $row->kredit > 0 ? 'Rp ' . number_format($row->kredit, 0, ',', '.') : '-' }}
+                            </td>
+                            <td class="text-right" style="padding: 10px; color: #27ae60; font-weight: 600;">
+                                {{ $row->debet > 0 ? 'Rp ' . number_format($row->debet, 0, ',', '.') : '-' }}
+                            </td>
+                            <td class="text-right"
+                                style="padding: 10px; font-weight: 700; color: {{ $saldo > 0 ? '#e74c3c' : ($saldo < 0 ? '#2980b9' : '#27ae60') }};">
+                                Rp {{ number_format($saldo, 0, ',', '.') }}
                             </td>
                             <td style="text-align: center; padding: 10px;">
                                 <a href="{{ url('/laporan/transaksi/edit/' . $row->id) }}"
@@ -92,7 +150,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" style="text-align: center; padding: 20px; color: #7f8c8d;">Belum ada data kasbon.
+                            <td colspan="10" style="text-align: center; padding: 20px; color: #7f8c8d;">Belum ada data kasbon.
                             </td>
                         </tr>
                     @endforelse
@@ -101,12 +159,22 @@
                     <tr
                         style="background-color: #fce4ec; font-weight: bold; border-top: 2px solid #333; border-bottom: 2px solid #333;">
                         <td colspan="6" class="text-right" style="padding: 10px;">TOTAL KASBON:</td>
+                        <td class="text-right" style="padding: 10px; color: #e74c3c;">
+                            Rp {{ number_format($kasbon->sum('kredit'), 0, ',', '.') }}</td>
+                        <td class="text-right" style="padding: 10px; color: #27ae60;">
+                            Rp {{ number_format($kasbon->sum('debet'), 0, ',', '.') }}</td>
                         <td class="text-right" style="padding: 10px; color: #c0392b; font-size: 14px;">Rp
-                            {{ number_format($totalKasbon, 0, ',', '.') }}</td>
+                            {{ number_format($totalKasbon, 0, ',', '.') }}
+                        </td>
                         <td></td>
                     </tr>
                 </tfoot>
             </table>
+            <p style="margin-top: 10px; font-size: 11.5px; color: #7f8c8d;">
+                * Kolom <b>Saldo Berjalan</b> dihitung per teknisi secara kumulatif — merah berarti masih ada hutang,
+                biru berarti kelebihan bayar (kemungkinan ada kasbon dari periode sebelumnya yang belum tercatat), dan
+                hijau berarti lunas.
+            </p>
         </div>
 
     </div>
