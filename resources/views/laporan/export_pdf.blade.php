@@ -3,18 +3,18 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Laporan Keuangan Utama & Rekapitulasi</title>
+    <title>Laporan Keuangan Retail</title>
     <style>
-        /* Margin kertas disesuaikan agar pas 1 halaman */
+        /* Margin kertas disesuaikan agar pas 1 halaman A4 */
         @page {
             size: A4;
-            margin: 5mm 8mm 8mm 8mm;
+            margin: 4mm 8mm 5mm 8mm;
         }
 
         body {
             font-family: sans-serif;
-            font-size: 10px;
-            /* Font kembali dibesarkan ke 10px agar lebih jelas */
+            font-size: 9.5px;
+            /* Ukuran font pas & jelas terbaca */
             color: #333;
             padding: 0;
             margin: 0;
@@ -24,8 +24,8 @@
         /* Kop Surat */
         .kop-container {
             border-bottom: 2px double #333;
-            padding-bottom: 4px;
-            margin-bottom: 5px;
+            padding-bottom: 3px;
+            margin-bottom: 4px;
             position: relative;
         }
 
@@ -43,14 +43,14 @@
 
         .kop-text h2 {
             margin: 0;
-            font-size: 13px;
+            font-size: 13.5px;
             text-transform: uppercase;
             font-weight: bold;
         }
 
         .kop-text p {
             margin: 1px 0 0 0;
-            font-size: 9.5px;
+            font-size: 10px;
             font-weight: bold;
             color: #444;
         }
@@ -79,7 +79,7 @@
         th,
         td {
             border: 1px solid #333;
-            padding: 2px 4px;
+            padding: 1.5px 4px;
             text-align: left;
         }
 
@@ -98,10 +98,6 @@
 
         .bold {
             font-weight: bold;
-        }
-
-        .text-success {
-            color: #27ae60;
         }
 
         .center-total {
@@ -129,117 +125,168 @@
         <div class="kop-text">
             <h2>PT. FANS MEDIA JEMBER</h2>
             <p>Laporan Keuangan Retail</p>
-            <div style="font-size: 9px; font-weight: normal; margin-top: 1px;">
-                Periode: {{ \Carbon\Carbon::parse($mulai)->format('d F Y') }} s/d
-                {{ \Carbon\Carbon::parse($sampai)->format('d F Y') }}
+            <div style="font-size: 9.5px; font-weight: normal; margin-top: 1px;">
+                Periode {{ \Carbon\Carbon::parse($mulai)->translatedFormat('d F Y') }} -
+                {{ \Carbon\Carbon::parse($sampai)->translatedFormat('d F Y') }}
             </div>
         </div>
     </div>
 
-    <!-- TABEL UTAMA KEUANGAN -->
+    <!-- TABEL UTAMA KEUANGAN (FORMAT RUNNING TOTAL CLIENT) -->
     <table>
         <thead>
             <tr>
                 <th style="width: 25px;" class="text-center">No</th>
                 <th>Keterangan</th>
-                <th class="text-right" style="width: 90px;">Debet</th>
-                <th class="text-right" style="width: 90px;">Kredit</th>
-                <th class="text-right" style="width: 100px;">Saldo</th>
+                <th class="text-right" style="width: 95px;">Debet</th>
+                <th class="text-right" style="width: 95px;">Kredit</th>
+                <th class="text-right" style="width: 105px;">Saldo</th>
             </tr>
         </thead>
         <tbody>
-            <!-- I. SALDO -->
-            <tr style="background: #f8f9fa;" class="bold">
+            <!-- I. SALDO AWAL -->
+            <tr class="bold">
                 <td class="text-center">I</td>
                 <td colspan="4">Saldo</td>
             </tr>
+            @php
+                // Perhitungan pecahan saldo awal (Cash vs Rekening)
+                $cashAwal = $saldoAwalCash ?? 0;
+                $rekeningAwal = $saldoAwal - $cashAwal;
+            @endphp
             <tr>
-                <td class="text-center">1</td>
-                <td>Saldo Bulan Sebelumnya (Saldo Awal)</td>
+                <td></td>
+                <td>Saldo Awal Cash</td>
+                <td class="text-right">Rp {{ number_format($cashAwal, 0, ',', '.') }}</td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Saldo Awal Rekening</td>
+                <td class="text-right">Rp {{ number_format($rekeningAwal, 0, ',', '.') }}</td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>Bunga Bank</td>
+                <td class="text-right">Rp -</td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr class="bold">
+                <td></td>
+                <td>Total Saldo Awal</td>
                 <td></td>
                 <td></td>
                 <td class="text-right">Rp {{ number_format($saldoAwal, 0, ',', '.') }}</td>
             </tr>
-            <tr>
-                <td class="text-center">2</td>
-                <td>Pemasukan Berjalan (Bulan Ini)</td>
-                <td class="text-right text-success">Rp {{ number_format($totalDebet, 0, ',', '.') }}</td>
-                <td></td>
-                <td class="text-right">Rp {{ number_format($saldoAwal + $totalDebet, 0, ',', '.') }}</td>
-            </tr>
 
-            <!-- II. PEMASUKAN -->
-            <tr style="background: #f8f9fa;" class="bold">
+            <!-- II. PEMASUKAN (DENGAN RUNNING TOTAL DI KOLOM SALDO) -->
+            <tr class="bold">
                 <td class="text-center">II</td>
-                <td colspan="4">Pemasukan Rinci</td>
+                <td colspan="4">Pemasukan</td>
             </tr>
             @php 
                                 $noPemasukan = 1;
+                $runPemasukan = 0;
                 $daftarAreaNames = $areas->pluck('nama_area')->toArray();
             @endphp
 
             @foreach($areas as $area)
-                <tr>
-                    <td class="text-center">{{ $noPemasukan++ }}</td>
-                    <td>Pembayaran Retail {{ $area->nama_area }}</td>
-                    <td class="text-right text-success">Rp
-                        {{ number_format($pemasukanPerArea[$area->nama_area] ?? 0, 0, ',', '.') }}</td>
-                    <td></td>
-                    <td class="text-right">-</td>
-                </tr>
+                @if(($pemasukanPerArea[$area->nama_area] ?? 0) > 0)
+                    @php 
+                                        $nom = $pemasukanPerArea[$area->nama_area];
+                        $runPemasukan += $nom;
+                    @endphp
+                    <tr>
+                        <td class="text-center">{{ $noPemasukan++ }}</td>
+                        <td>Pembayaran Retail {{ $area->nama_area }}</td>
+                        <td class="text-right">Rp {{ number_format($nom, 0, ',', '.') }}</td>
+                        <td></td>
+                        <td class="text-right">Rp {{ number_format($runPemasukan, 0, ',', '.') }}</td>
+                    </tr>
+                @endif
             @endforeach
 
             @foreach($pemasukanPerArea as $namaKey => $nominalKey)
                 @if(!in_array($namaKey, $daftarAreaNames) && $nominalKey > 0)
+                    @php $runPemasukan += $nominalKey; @endphp
                     <tr>
                         <td class="text-center">{{ $noPemasukan++ }}</td>
                         <td>{{ $namaKey }}</td>
-                        <td class="text-right text-success">Rp {{ number_format($nominalKey, 0, ',', '.') }}</td>
+                        <td class="text-right">Rp {{ number_format($nominalKey, 0, ',', '.') }}</td>
                         <td></td>
-                        <td class="text-right">-</td>
+                        <td class="text-right">Rp {{ number_format($runPemasukan, 0, ',', '.') }}</td>
                     </tr>
                 @endif
             @endforeach
 
             @if($kasbonMasuk > 0)
+                @php $runPemasukan += $kasbonMasuk; @endphp
                 <tr>
                     <td class="text-center">{{ $noPemasukan++ }}</td>
                     <td>Pembayaran Kasbon Teknisi</td>
-                    <td class="text-right text-success">Rp {{ number_format($kasbonMasuk, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($kasbonMasuk, 0, ',', '.') }}</td>
                     <td></td>
-                    <td class="text-right">-</td>
+                    <td class="text-right">Rp {{ number_format($runPemasukan, 0, ',', '.') }}</td>
                 </tr>
             @endif
 
-            <!-- III. PENGELUARAN -->
-            <tr style="background: #f8f9fa;" class="bold">
-                <td class="text-center">III</td>
-                <td colspan="4">Pengeluaran Rinci</td>
+            <tr class="bold">
+                <td></td>
+                <td>Total Pemasukan</td>
+                <td></td>
+                <td></td>
+                <td class="text-right">Rp {{ number_format($totalDebet, 0, ',', '.') }}</td>
             </tr>
-            @php $noPengeluaran = 1; @endphp
+
+            <!-- III. PENGELUARAN (DENGAN RUNNING TOTAL NEGATIF DI KOLOM SALDO) -->
+            <tr class="bold">
+                <td class="text-center">III</td>
+                <td colspan="4">Pengeluaran</td>
+            </tr>
+            @php 
+                                $noPengeluaran = 1;
+                $runPengeluaran = 0;
+            @endphp
             @foreach($pengeluaranPerKategori as $namaKat => $nominalKat)
-                <tr>
-                    <td class="text-center">{{ $noPengeluaran++ }}</td>
-                    <td>{{ $namaKat }}</td>
-                    <td></td>
-                    <td class="text-right">Rp {{ number_format($nominalKat, 0, ',', '.') }}</td>
-                    <td class="text-right">-Rp {{ number_format($nominalKat, 0, ',', '.') }}</td>
-                </tr>
+                @if($nominalKat > 0)
+                    @php $runPengeluaran += $nominalKat; @endphp
+                    <tr>
+                        <td class="text-center">{{ $noPengeluaran++ }}</td>
+                        <td>{{ $namaKat }}</td>
+                        <td></td>
+                        <td class="text-right">Rp {{ number_format($nominalKat, 0, ',', '.') }}</td>
+                        <td class="text-right">-Rp {{ number_format($runPengeluaran, 0, ',', '.') }}</td>
+                    </tr>
+                @endif
             @endforeach
             @if($kasbonKeluar > 0)
+                @php $runPengeluaran += $kasbonKeluar; @endphp
                 <tr>
                     <td class="text-center">{{ $noPengeluaran++ }}</td>
                     <td>Kasbon Teknisi</td>
                     <td></td>
                     <td class="text-right">Rp {{ number_format($kasbonKeluar, 0, ',', '.') }}</td>
-                    <td class="text-right">-Rp {{ number_format($kasbonKeluar, 0, ',', '.') }}</td>
+                    <td class="text-right">-Rp {{ number_format($runPengeluaran, 0, ',', '.') }}</td>
                 </tr>
             @endif
 
-            <!-- TOTAL KEUANGAN RETAIL -->
-            <tr class="bold" style="background-color: #ffeaa7;">
+            <tr class="bold">
+                <td></td>
+                <td>Total Pengeluaran</td>
+                <td></td>
+                <td></td>
+                <td class="text-right">-Rp
+                    {{ number_format($totalPengeluaranOperasional + $kasbonKeluar, 0, ',', '.') }}</td>
+            </tr>
+
+            <!-- TOTAL KEUANGAN RETAIL (BARIS KUNING CLIENT) -->
+            <tr class="bold" style="background-color: #ffff00;">
                 <td colspan="2" class="center-total">TOTAL KEUANGAN RETAIL</td>
-                <td class="text-right">Rp {{ number_format($totalDebet, 0, ',', '.') }}</td>
+                <td class="text-right">Rp {{ number_format($saldoAwal + $totalDebet, 0, ',', '.') }}</td>
                 <td class="text-right">Rp {{ number_format($totalPengeluaranOperasional + $kasbonKeluar, 0, ',', '.') }}
                 </td>
                 <td class="text-right">Rp {{ number_format($saldoAkhir, 0, ',', '.') }}</td>
@@ -247,12 +294,12 @@
         </tbody>
     </table>
 
-    <!-- KELOMPOK BAWAH (POSISI KAS & TTD) -->
+    <!-- KELOMPOK BAWAH (POSISI KAS & TTD) DIPASTIKAN UTUH DALAM 1 HALAMAN -->
     <div class="keep-together">
         <table>
             <thead>
                 <tr style="background-color: #f1f2f6;">
-                    <th colspan="3" class="text-center" style="padding: 2.5px; font-weight: bold;">
+                    <th colspan="3" class="text-center" style="padding: 2px; font-weight: bold;">
                         Laporan Keuangan Retail - Posisi Saldo Akhir</th>
                 </tr>
                 <tr>
@@ -270,7 +317,7 @@
                 <tr>
                     <td class="text-center">2</td>
                     <td>Uang Cash dari Retail yang belum disetor ke Bank</td>
-                    <td class="text-right text-success bold">Rp
+                    <td class="text-right bold" style="color: #27ae60;">Rp
                         {{ number_format($uangCashBelumDisetor ?? 0, 0, ',', '.') }}</td>
                 </tr>
                 <tr>
@@ -278,7 +325,7 @@
                     <td>Uang Retail di Rekening</td>
                     <td class="text-right">Rp {{ number_format($uangRetailDiRekening ?? 0, 0, ',', '.') }}</td>
                 </tr>
-                <tr class="bold" style="background-color: #ffeaa7;">
+                <tr class="bold" style="background-color: #ffff00;">
                     <td colspan="2" class="center-total">TOTAL KEUANGAN RETAIL</td>
                     <td class="text-right">Rp
                         {{ number_format(($saldoAwalCash + $uangCashBelumDisetor + $uangRetailDiRekening), 0, ',', '.') }}
@@ -287,31 +334,29 @@
             </tbody>
         </table>
 
-        <!-- CATATAN & Tanda Tangan Ringkas -->
+        <!-- CATATAN -->
         <div style="margin-top: 2px; font-style: italic; font-size: 8px;">Catatan : Bukti Terlampir</div>
 
-        <table style="width: 100%; border: none; margin-top: 2px;">
+        <!-- TANDA TANGAN: DIREKTUR (KIRI) | KOMISARIS (TENGAH - AGAK TURUN KE BAWAH) | ADMIN RETAIL (KANAN) -->
+        <table style="width: 100%; border: none; margin-top: 4px;">
             <tr>
-                <td style="border: none; width: 50%; text-align: center; vertical-align: top;">
-                    Direktur
-                    <br><br><br>
-                    <strong>Fans Ach Farrosil Miqdad</strong>
+                <td style="border: none; width: 33%; text-align: center; vertical-align: top;">
+                    Mengetahui,<br>
+                    <strong>Direktur</strong>
+                    <br><br><br><br>
+                    <span style="text-decoration: underline; font-weight: bold;">Fans Ach Farrosil Miqdad</span>
                 </td>
-                <td style="border: none; width: 50%; text-align: center; vertical-align: top;">
+                <td style="border: none; width: 34%; text-align: center; vertical-align: top; padding-top: 60px;">
+                    Menyetujui,<br>
+                    <strong>Komisaris</strong>
+                    <br><br><br><br>
+                    <span style="text-decoration: underline; font-weight: bold;">Erfan Effendi S.Pd., M.Pd</span>
+                </td>
+                <td style="border: none; width: 33%; text-align: center; vertical-align: top;">
                     Jember, {{ \Carbon\Carbon::parse($sampai)->translatedFormat('d F Y') }}<br>
-                    Admin Retail
-                    <br><br><br>
-                    <strong>Hertina Rahmaningtyas</strong>
-                </td>
-            </tr>
-        </table>
-
-        <table style="width: 100%; border: none; margin-top: 1px;">
-            <tr>
-                <td style="border: none; text-align: center; vertical-align: top;">
-                    Mengetahui, Komisaris
-                    <br><br><br>
-                    <strong>Erfan Effendi S.Pd., M.Pd</strong>
+                    <strong>Admin Retail</strong>
+                    <br><br><br><br>
+                    <span style="text-decoration: underline; font-weight: bold;">Hertina Rahmaningtyas</span>
                 </td>
             </tr>
         </table>
