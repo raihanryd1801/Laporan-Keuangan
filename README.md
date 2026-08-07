@@ -72,6 +72,10 @@ Aplikasi manajemen keuangan retail berbasis Laravel untuk mencatat pemasukan, pe
   - Whitelist IP
   - Monitoring sesi aktif
   - Kill Session
+  - Terintegrasi dengan Fail2ban
+  - Unban IP
+  - Whitelist IP Fail2ban
+  - Setting Maxretry Fail2ban Web Laravel
 
 ---
 
