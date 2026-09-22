@@ -2,18 +2,18 @@
 <html lang="id">
 
 <head>
-    <script type="module">
-        import "https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es2017-esm.js";
-    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="turbo-cache-control" content="no-cache">
     <title>@yield('title', 'Aplikasi Keuangan Retail')</title>
-
-    <!-- [BARU] Tambahkan Script Turbo Hotwire (CDN) di sini -->
-    <script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.es5-umd.js"
-        data-turbo-eval="false"></script>
-
+    {{-- Turbo Hotwired: SPA-like navigation tanpa reload <head>, tanpa ubah data/backend --}}
+    <script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@8/dist/turbo.es2017-umd.js" defer></script>
     <style>
+        /* Progress bar Turbo saat pindah menu */
+        .turbo-progress-bar {
+            height: 3px;
+            background-color: #e67e22;
+        }
         * {
             box-sizing: border-box;
             margin: 0;
@@ -242,19 +242,6 @@
             font-weight: 600;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
-
-        /* Styling Progress Bar bawaan Turbo di atas layar */
-        .turbo-progress-bar {
-            position: fixed;
-            display: block;
-            top: 0;
-            left: 0;
-            height: 3px;
-            background: #e67e22;
-            /* Warna Oranye khas menu input */
-            z-index: 99999;
-            transition: width 300ms ease-out, opacity 150ms ease-in;
-        }
     </style>
 </head>
 
@@ -263,7 +250,7 @@
     <!-- SIDEBAR NAVIGATION -->
     <div class="sidebar">
 
-        <!-- HEADER BRAND & PROFIL USER -->
+        <!-- HEADER BRAND & PROFIL USER (dengan tema gelap seirama) -->
         <div class="sidebar-header" style="
             padding: 20px 18px 16px 18px;
             border-bottom: 1px solid #1a252f;
@@ -283,41 +270,41 @@
 
             @auth
                 <a href="{{ url('/laporan/profile') }}" style="
-                                                    display: block;
-                                                    text-decoration: none;
-                                                    background: rgba(255,255,255,0.08);
-                                                    padding: 12px 14px;
-                                                    border-radius: 8px;
-                                                    border: 1px solid #34495e;
-                                                    text-align: center;
-                                                    transition: 0.2s;
-                                                " onmouseover="this.style.background='rgba(255,255,255,0.15)'"
+                                        display: block;
+                                        text-decoration: none;
+                                        background: rgba(255,255,255,0.08);
+                                        padding: 12px 14px;
+                                        border-radius: 8px;
+                                        border: 1px solid #34495e;
+                                        text-align: center;
+                                        transition: 0.2s;
+                                    " onmouseover="this.style.background='rgba(255,255,255,0.15)'"
                     onmouseout="this.style.background='rgba(255,255,255,0.08)'">
                     <div style="
-                                                        font-weight: 700;
-                                                        color: #ecf0f1;
-                                                        font-size: 18px;
-                                                        line-height: 1.4;
-                                                        word-break: break-word;
-                                                    ">
+                                            font-weight: 700;
+                                            color: #ecf0f1;
+                                            font-size: 18px;
+                                            line-height: 1.4;
+                                            word-break: break-word;
+                                        ">
                         {{ auth()->user()->name }}
                     </div>
                     <div style="
-                                                        color: #bdc3c7;
-                                                        font-size: 18px;
-                                                        line-height: 1.4;
-                                                        word-break: break-word;
-                                                        margin-top: 2px;
-                                                    ">
+                                            color: #bdc3c7;
+                                            font-size: 18px;
+                                            line-height: 1.4;
+                                            word-break: break-word;
+                                            margin-top: 2px;
+                                        ">
                         {{ auth()->user()->email }}
                     </div>
                     <div style="
-                                                        color: #f1c40f;
-                                                        font-size: 14px;
-                                                        margin-top: 5px;
-                                                        font-weight: 600;
-                                                        letter-spacing: 0.3px;
-                                                    ">
+                                            color: #f1c40f;
+                                            font-size: 14px;
+                                            margin-top: 5px;
+                                            font-weight: 600;
+                                            letter-spacing: 0.3px;
+                                        ">
                         ✎ User Edit
                     </div>
                 </a>
@@ -387,7 +374,8 @@
             </li>
 
             <li style="list-style:none; margin-top:10px;">
-                <form action="{{ route('logout') }}" method="POST" style="display:inline; width:100%;">
+                {{-- Logout wajib full-reload agar sesi benar-benar bersih --}}
+                <form action="{{ route('logout') }}" method="POST" data-turbo="false" style="display:inline; width:100%;">
                     @csrf
                     <button type="submit" style="
                         width:100%;

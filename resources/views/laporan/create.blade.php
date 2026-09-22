@@ -128,9 +128,14 @@
     </form>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function () {
+        // Kompatibel full-reload + Turbo Drive. Tiap kunjungan Turbo me-render ulang
+        // <body> baru sehingga script ini dieksekusi ulang dari nol (tidak perlu guard).
+        function initFormTransaksi() {
             // --- LOGIKA KALKULATOR NOMINAL ---
             let inputRumus = document.getElementById('input_rumus_nominal');
+            // Guard: bukan halaman form (listener lama ikut terpanggil) atau sudah di-bind
+            if (!inputRumus || inputRumus.dataset.bound === '1') return;
+            inputRumus.dataset.bound = '1';
             let hiddenNominal = document.getElementById('nominal_asli');
             let tampilHasil = document.getElementById('tampil_hasil');
 
@@ -262,6 +267,11 @@
 
             sesuaikanForm();
             selectJenis.addEventListener('change', sesuaikanForm);
-        });
+        }
+
+        document.addEventListener("DOMContentLoaded", initFormTransaksi);
+        document.addEventListener("turbo:load", initFormTransaksi);
+        // Script dieksekusi ulang tiap kunjungan Turbo; panggil langsung untuk render saat ini.
+        initFormTransaksi();
     </script>
 @endsection

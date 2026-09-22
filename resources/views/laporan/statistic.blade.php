@@ -52,32 +52,32 @@
                     </div>
 
                     <button type="submit" style="
-                                        background: #3498db;
-                                        color: white;
-                                        border: none;
-                                        padding: 5px 14px;
-                                        border-radius: 6px;
-                                        font-weight: 600;
-                                        font-size: 13px;
-                                        cursor: pointer;
-                                        transition: all 0.3s ease;
-                                        white-space: nowrap;
-                                    " onmouseover="this.style.background='#2980b9'"
+                                    background: #3498db;
+                                    color: white;
+                                    border: none;
+                                    padding: 5px 14px;
+                                    border-radius: 6px;
+                                    font-weight: 600;
+                                    font-size: 13px;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    white-space: nowrap;
+                                " onmouseover="this.style.background='#2980b9'"
                         onmouseout="this.style.background='#3498db'">
                         Terapkan
                     </button>
 
                     <a href="{{ url('/laporan/statistik') }}" style="
-                                        background: #ecf0f1;
-                                        color: #2c3e50;
-                                        text-decoration: none;
-                                        padding: 5px 12px;
-                                        border-radius: 6px;
-                                        font-weight: 600;
-                                        font-size: 12px;
-                                        transition: all 0.3s ease;
-                                        white-space: nowrap;
-                                    " onmouseover="this.style.background='#dde1e6'"
+                                    background: #ecf0f1;
+                                    color: #2c3e50;
+                                    text-decoration: none;
+                                    padding: 5px 12px;
+                                    border-radius: 6px;
+                                    font-weight: 600;
+                                    font-size: 12px;
+                                    transition: all 0.3s ease;
+                                    white-space: nowrap;
+                                " onmouseover="this.style.background='#dde1e6'"
                         onmouseout="this.style.background='#ecf0f1'">
                         Reset
                     </a>
@@ -159,69 +159,119 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // Gunakan 'turbo:load' agar seluruh grafik dirender ulang dengan sempurna saat halaman dipindah via Turbo
-        document.addEventListener("turbo:load", function () {
+        // Kompatibel Turbo Drive: hancurkan instance lama (hindari "Canvas is already in use"
+        // dan animasi bocor), lalu gambar ulang tiap kunjungan. Guard dataset agar tidak double-init.
+        window.__statistikCharts = window.__statistikCharts || [];
+        function destroyStatistikCharts() {
+            window.__statistikCharts.forEach(function (ch) { try { ch.destroy(); } catch (e) {} });
+            window.__statistikCharts = [];
+            if (typeof Chart !== 'undefined') {
+                ['keuanganChart', 'piePemasukan', 'piePengeluaran'].forEach(function (id) {
+                    const canvas = document.getElementById(id);
+                    if (canvas) {
+                        const existing = Chart.getChart(canvas);
+                        if (existing) { try { existing.destroy(); } catch (e) {} }
+                    }
+                });
+            }
+        }
 
-            // 1. BAR CHART
-            const canvasBar = document.getElementById('keuanganChart');
-            if (canvasBar) {
-                const ctxBar = canvasBar.getContext('2d');
-                new Chart(ctxBar, {
-                    type: 'bar',
-                    data: {
-                        labels: {!! json_encode($chartLabels) !!},
-                        datasets: [
-                            {
-                                label: 'Pemasukan',
-                                data: {!! json_encode($pemasukanData) !!},
-                                backgroundColor: '#2ecc71',
-                                borderRadius: 4
-                            },
-                            {
-                                label: 'Pengeluaran',
-                                data: {!! json_encode($pengeluaranData) !!},
-                                backgroundColor: '#e74c3c',
-                                borderRadius: 4
+        function initStatistikCharts() {
+            const ctxBarEl = document.getElementById('keuanganChart');
+            // Bukan halaman statistik (listener lama ikut terpanggil) atau Chart.js belum termuat
+            if (!ctxBarEl || typeof Chart === 'undefined') return;
+            // Elemen fresh tiap kunjungan Turbo; lewati jika sudah di-init pada render ini
+            if (ctxBarEl.dataset.chartInit === '1') return;
+            ctxBarEl.dataset.chartInit = '1';
+            destroyStatistikCharts();
+
+            // BAR CHART
+            const ctxBar = ctxBarEl.getContext('2d');
+            window.__statistikCharts.push(new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: {!! json_encode($chartLabels) !!},
+                    datasets: [
+                        {
+                            label: 'Pemasukan',
+                            data: {!! json_encode($pemasukanData) !!},
+                            backgroundColor: '#2ecc71',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Pengeluaran',
+                            data: {!! json_encode($pengeluaranData) !!},
+                            backgroundColor: '#e74c3c',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(value); }
                             }
-                        ]
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return context.dataset.label + ': Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed.y);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const colorPalette = ['#3498db', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#ff9ff3', '#feca57', '#48dbfb', '#ff6b6b'];
+
+            // PIE PEMASUKAN
+            @if(count($piePemasukan) > 0)
+                const ctxPieIn = document.getElementById('piePemasukan').getContext('2d');
+                window.__statistikCharts.push(new Chart(ctxPieIn, {
+                    type: 'doughnut',
+                    data: {
+                        labels: {!! json_encode(array_keys($piePemasukan)) !!},
+                        datasets: [{
+                            data: {!! json_encode(array_values($piePemasukan)) !!},
+                            backgroundColor: colorPalette,
+                            borderWidth: 2,
+                            hoverOffset: 6
+                        }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    callback: function (value) { return 'Rp ' + new Intl.NumberFormat('id-ID').format(value); }
-                                }
-                            }
-                        },
+                        cutout: '60%',
                         plugins: {
+                            legend: { position: 'right', labels: { boxWidth: 12 } },
                             tooltip: {
                                 callbacks: {
                                     label: function (context) {
-                                        return context.dataset.label + ': Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed.y);
+                                        return ' ' + context.label + ': Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed);
                                     }
                                 }
                             }
                         }
                     }
                 });
-            }
+            @endif
 
-            const colorPalette = ['#3498db', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#ff9ff3', '#feca57', '#48dbfb', '#ff6b6b'];
-
-            // 2. PIE PEMASUKAN
-            @if(count($piePemasukan) > 0)
-                const canvasPieIn = document.getElementById('piePemasukan');
-                if (canvasPieIn) {
-                    const ctxPieIn = canvasPieIn.getContext('2d');
-                    new Chart(ctxPieIn, {
+                // PIE PENGELUARAN
+                @if(count($piePengeluaran) > 0)
+                    const ctxPieOut = document.getElementById('piePengeluaran').getContext('2d');
+                    window.__statistikCharts.push(new Chart(ctxPieOut, {
                         type: 'doughnut',
                         data: {
-                            labels: {!! json_encode(array_keys($piePemasukan)) !!},
+                            labels: {!! json_encode(array_keys($piePengeluaran)) !!},
                             datasets: [{
-                                data: {!! json_encode(array_values($piePemasukan)) !!},
+                                data: {!! json_encode(array_values($piePengeluaran)) !!},
                                 backgroundColor: colorPalette,
                                 borderWidth: 2,
                                 hoverOffset: 6
@@ -243,44 +293,15 @@
                             }
                         }
                     });
-                }
-            @endif
-
-                // 3. PIE PENGELUARAN
-                @if(count($piePengeluaran) > 0)
-                    const canvasPieOut = document.getElementById('piePengeluaran');
-                    if (canvasPieOut) {
-                        const ctxPieOut = canvasPieOut.getContext('2d');
-                        new Chart(ctxPieOut, {
-                            type: 'doughnut',
-                            data: {
-                                labels: {!! json_encode(array_keys($piePengeluaran)) !!},
-                                datasets: [{
-                                    data: {!! json_encode(array_values($piePengeluaran)) !!},
-                                    backgroundColor: colorPalette,
-                                    borderWidth: 2,
-                                    hoverOffset: 6
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                cutout: '60%',
-                                plugins: {
-                                    legend: { position: 'right', labels: { boxWidth: 12 } },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: function (context) {
-                                                return ' ' + context.label + ': Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                    }
                 @endif
 
-        });
+        }
+
+        document.addEventListener("DOMContentLoaded", initStatistikCharts);
+        document.addEventListener("turbo:load", initStatistikCharts);
+        // Bersihkan sebelum Turbo meng-cache halaman (hindari canvas dipakai ulang)
+        document.addEventListener("turbo:before-cache", destroyStatistikCharts);
+        // Script dieksekusi ulang tiap kunjungan Turbo; panggil langsung untuk render saat ini.
+        initStatistikCharts();
     </script>
 @endsection

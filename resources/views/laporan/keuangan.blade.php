@@ -13,7 +13,7 @@
                 <button type="submit">Filter</button>
             </form>
 
-            <a href="{{ url('/laporan/export/excel?tanggal_mulai=' . $mulai . '&tanggal_selesai=' . $sampai) }}"
+            <a href="{{ url('/laporan/export/excel?tanggal_mulai=' . $mulai . '&tanggal_selesai=' . $sampai) }}" data-turbo="false"
                 style="background: #27ae60; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px;">📥 Excel</a>
             <a href="{{ url('/laporan/export/pdf?tanggal_mulai=' . $mulai . '&tanggal_selesai=' . $sampai) }}" target="_blank"
                 style="background: #e74c3c; color: white; padding: 8px 12px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px;">🖨️ Cetak PDF</a>

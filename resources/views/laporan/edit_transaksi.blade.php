@@ -181,10 +181,12 @@
         </div>
     </div>
 
-    <!-- Script Filter Otomatis saat Mutasi Dipilih -->
+    <!-- Script Filter Otomatis saat Mutasi Dipilih (kompatibel Turbo Drive) -->
     <script>
         function toggleJenisTransaksi() {
-            const jenis = document.getElementById('jenis_transaksi').value;
+            const jenisEl = document.getElementById('jenis_transaksi');
+            if (!jenisEl) return; // bukan halaman edit (listener lama ikut terpanggil)
+            const jenis = jenisEl.value;
             const kategoriDiv = document.querySelector('.form-group-kategori');
             const kategoriSelect = document.getElementById('kategori_id');
             const labelMetode = document.getElementById('label-metode');
@@ -221,5 +223,10 @@
         document.addEventListener("DOMContentLoaded", function () {
             toggleJenisTransaksi();
         });
+        // Turbo Drive tidak memicu DOMContentLoaded saat pindah menu
+        document.addEventListener("turbo:load", function () {
+            toggleJenisTransaksi();
+        });
+        toggleJenisTransaksi();
     </script>
 @endsection
