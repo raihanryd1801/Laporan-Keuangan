@@ -185,6 +185,13 @@
             ctxBarEl.dataset.chartInit = '1';
             destroyStatistikCharts();
 
+            // Samakan warna teks/garis Chart.js dengan tema aktif
+            if (typeof Chart !== 'undefined') {
+                var __statDark = document.documentElement.dataset.theme === 'dark';
+                Chart.defaults.color = __statDark ? '#aeb8c4' : '#666';
+                Chart.defaults.borderColor = __statDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+            }
+
             // BAR CHART
             const ctxBar = ctxBarEl.getContext('2d');
             window.__statistikCharts.push(new Chart(ctxBar, {
@@ -301,6 +308,16 @@
         document.addEventListener("turbo:load", initStatistikCharts);
         // Bersihkan sebelum Turbo meng-cache halaman (hindari canvas dipakai ulang)
         document.addEventListener("turbo:before-cache", destroyStatistikCharts);
+        // Gambar ulang grafik saat tema diganti (guard agar tidak double-bind)
+        if (!window.__statThemeBound) {
+            window.__statThemeBound = true;
+            document.addEventListener('theme:changed', function () {
+                var el = document.getElementById('keuanganChart');
+                if (!el) return;
+                delete el.dataset.chartInit;
+                initStatistikCharts();
+            });
+        }
         // Script dieksekusi ulang tiap kunjungan Turbo; panggil langsung untuk render saat ini.
         initStatistikCharts();
     </script>
