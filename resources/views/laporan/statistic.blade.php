@@ -227,7 +227,7 @@
                         }
                     }
                 }
-            });
+            }));
 
             const colorPalette = ['#3498db', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#34495e', '#ff9ff3', '#feca57', '#48dbfb', '#ff6b6b'];
 
@@ -260,7 +260,7 @@
                             }
                         }
                     }
-                });
+                }));
             @endif
 
                 // PIE PENGELUARAN
@@ -292,7 +292,7 @@
                                 }
                             }
                         }
-                    });
+                    }));
                 @endif
 
         }
