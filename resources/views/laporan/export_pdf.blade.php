@@ -96,6 +96,7 @@
             border: 1px solid #333;
             padding: 1.5px 4px;
             text-align: left;
+            font-size: 11px;
         }
 
         th {
@@ -187,7 +188,9 @@
             </tr>
             @php
                 // Perhitungan pecahan saldo awal (Cash vs Rekening)
-                $cashAwal = $saldoAwalCash ?? 0;
+                // [REVISI CLIENT] Cash awal = total cash akhir bulan lalu
+                // = operasional akhir bulan lalu + belum disetor akhir bulan lalu.
+                $cashAwal = $saldoAwalCashTotal ?? ($saldoAwalCash ?? 0);
                 $rekeningAwal = $saldoAwal - $cashAwal;
             @endphp
             <tr>

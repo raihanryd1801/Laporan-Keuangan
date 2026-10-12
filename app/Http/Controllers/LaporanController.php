@@ -35,8 +35,7 @@ class LaporanController extends Controller
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
             })->sum('debet');
 
-        $transaksiSebelumnya = \App\Models\Transaksi::where('tanggal', '<', $mulai)->get();
-        $saldoAwalAkumulasi = $transaksiSebelumnya->sum('debet') - $transaksiSebelumnya->sum('kredit');
+        $saldoAwalAkumulasi = (float) \App\Models\Transaksi::where('tanggal', '<', $mulai)->selectRaw('COALESCE(SUM(debet), 0) - COALESCE(SUM(kredit), 0) as selisih')->value('selisih');
 
         $saldoAwal = $saldoAwalAkumulasi + $transaksiSaldoAwal;
 
@@ -706,8 +705,7 @@ class LaporanController extends Controller
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
             })->sum('debet');
 
-        $transaksiSebelumnya = \App\Models\Transaksi::where('tanggal', '<', $mulai)->get();
-        $saldoAwalAkumulasi = $transaksiSebelumnya->sum('debet') - $transaksiSebelumnya->sum('kredit');
+        $saldoAwalAkumulasi = (float) \App\Models\Transaksi::where('tanggal', '<', $mulai)->selectRaw('COALESCE(SUM(debet), 0) - COALESCE(SUM(kredit), 0) as selisih')->value('selisih');
         $saldoAwal = $saldoAwalAkumulasi + $transaksiSaldoAwal;
 
         $transaksi = \App\Models\Transaksi::whereBetween('tanggal', [$mulai, $sampai])
@@ -744,8 +742,7 @@ class LaporanController extends Controller
                 $q->where('nama_kategori', 'like', '%Saldo Awal%');
             })->sum('debet');
 
-        $transaksiSebelumnya = \App\Models\Transaksi::where('tanggal', '<', $mulai)->get();
-        $saldoAwalAkumulasi = $transaksiSebelumnya->sum('debet') - $transaksiSebelumnya->sum('kredit');
+        $saldoAwalAkumulasi = (float) \App\Models\Transaksi::where('tanggal', '<', $mulai)->selectRaw('COALESCE(SUM(debet), 0) - COALESCE(SUM(kredit), 0) as selisih')->value('selisih');
 
         $saldoAwal = $saldoAwalAkumulasi + $transaksiSaldoAwal;
 
@@ -809,7 +806,20 @@ class LaporanController extends Controller
         $uangRetailDiRekening = $saldoAkhir - $uangCashOperasional - $uangCashBelumDisetor - $uangRekeningFaros;
 
         // Alias agar view blade lama yang pakai nama variabel saldoAwalCash tidak error
+        // (dipakai tabel bawah = posisi AKHIR periode, tetap operasional akhir)
         $saldoAwalCash = $uangCashOperasional;
+
+        // =========================================================
+        // [REVISI CLIENT] Saldo Awal Cash = total cash AKHIR bulan lalu
+        // = operasional akhir bulan lalu + belum disetor akhir bulan lalu
+        // = SUM cash WHERE tanggal < mulai (bukan <= sampai)
+        // Hanya dipakai tabel ATAS export PDF (I. SALDO AWAL).
+        // =========================================================
+        $saldoCashAwal = \App\Models\Transaksi::where('tanggal', '<', $mulai)
+            ->where('metode_pembayaran_id', 1) // 1 = Cash
+            ->selectRaw('COALESCE(SUM(debet) - SUM(kredit), 0) as saldo')
+            ->value('saldo');
+        $saldoAwalCashTotal = max(0, (float) $saldoCashAwal);
 
         // --- Data Pelengkap untuk View ---
         $areas = \App\Models\Area::all();
@@ -863,6 +873,7 @@ class LaporanController extends Controller
             'sampai',
             'areas',
             'saldoAwalCash',
+            'saldoAwalCashTotal',
             'saldoCashSaatIni',
             'uangCashOperasional',
             'uangCashBelumDisetor',
